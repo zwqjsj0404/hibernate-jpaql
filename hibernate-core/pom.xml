@@ -191,9 +191,9 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>antlr</goal>
+                            <goal>gunit</goal>
                         </goals>
                     </execution>
                 </executions>
