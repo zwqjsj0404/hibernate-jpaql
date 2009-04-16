@@ -64,122 +64,96 @@ tokens {
 }
 
 @parser::members {
-	private final TranslationContext context;
-
-//	public OrderByParserParser(TokenStream input, TranslationContext context) {
-//		super( input );
-//		this.context = context;
-//	}
-
     /**
      * Process the given node as a quote identifier.  These need to be quoted in the dialect-specific way.
      *
      * @param ident The quoted-identifier node.
      *
      * @return The processed node.
-     *
-     * @see org.hibernate.dialect.Dialect#quote
      */
     protected CommonTree quotedIdentifier(CommonTree ident) {
-    	String quotedText = Template.TEMPLATE + "." + context.getDialect().quote( '`' + ident.getText() + '`' );
-    	return createTreeNode( ident.getToken().getType(), quotedText );
+        // here we assume single-quote as the identifier quote character...
+        return createTreeNode( IDENTIFIER, Template.TEMPLATE + ".'" + ident.getText() + "'" );
     }
+
 
     /**
      * Process the given node as a quote string.
      *
-     * @param ident The quoted string.  This is used from within function param recognition, and represents a
+     * @param token The quoted string.  This is used from within function param recognition, and represents a
      * SQL-quoted string.
      *
      * @return The processed node.
      */
-    protected CommonTree quotedString(CommonTree ident) {
-    	String quotedText = context.getDialect().quote( ident.getText() );
-    	return createTreeNode( ident.getToken().getType(), quotedText );
+    protected CommonTree quotedString(Token token) {
+    	return createTreeNode( STRING_LITERAL, "'" + token.getText() + "'" );
     }
 
     /**
      * A check to see if the text of the given node represents a known function name.
      *
-     * @param ast The node whose text we want to check.
+     * @param token The node whose text we want to check.
      *
      * @return True if the node's text is a known function name, false otherwise.
      *
      * @see org.hibernate.dialect.function.SQLFunctionRegistry
      */
-    protected boolean isFunctionName(CommonToken token) {
-    	return context.getSqlFunctionRegistry().hasFunction( token.getText() );
+    protected boolean isFunctionName(Token token) {
+    	return false;
+    }
+
+    /**
+     * Process the given node as a function name.  Differs from {@link #resolveFunction(org.antlr.runtime.tree.CommonTree)
+     * specifically in that here we are expecting just a function name without parens or arguments.
+     *
+     * @param token The token representing the function name.
+     *
+     * @return The processed node.
+     */
+    protected CommonTree resolveFunction(Token token) {
+        return resolveFunction( new CommonTree( token ) );
     }
 
     /**
      * Process the given node as a function.
      *
-     * @param The node representing the function invocation (including parameters as subtree components).
+     * @param tree The node representing the function invocation (including parameters as subtree components).
      *
      * @return The processed node.
      */
     protected CommonTree resolveFunction(CommonTree tree) {
-		// todo : handle sub functions?
-   		Tree parameters = tree.getChild(0);
-		assert EXPR_LIST == parameters.getType();
+		Tree argumentList = tree.getChild( 0 );
+		assert argumentList == null || "{param list}".equals( argumentList.getText() );
 
-		final String functionName = tree.getText();
-		final SQLFunction function = context.getSqlFunctionRegistry().findSQLFunction( functionName );
-		if ( function == null ) {
-			String text = functionName;
-			if ( parameters.getChildCount() > 0 ) {
-				text+= '(';
-				for ( int i = 0, x = parameters.getChildCount(); i < x; i++ ) {
-					text+= parameters.getChild(i).getText();
-					if ( i < x ) {
-						text+= ", ";
-					}
-				}
-				text+= ')';
-			}
-			return createTreeNode( IDENT, text );
-		}
-		else {
-			ArrayList expressions = new ArrayList();
-			for ( int i = 0, x = parameters.getChildCount(); i < x; i++ ) {
-				expressions.add( parameters.getChild(i).getText() );
-			}
-			final String text = function.render( expressions, context.getSessionFactory() );
-			return createTreeNode( IDENT, text );
-		}
+        String text = tree.getText();
+        int count = argumentList == null ? 0 : argumentList.getChildCount();
+        if ( count > 0 ) {
+            text += '(';
+            for ( int i = 0; i < count; i++ ) {
+                Tree argument = argumentList.getChild( i );
+                text += argument.getText();
+                if ( i < count ) {
+                    text += ", ";
+                }
+            }
+            text += ')';
+        }
+        return createTreeNode( IDENTIFIER, text );
+    }
+
+    protected CommonTree resolveIdent(Token token) {
+        return resolveIdent( new CommonTree( token ) );
     }
 
     /**
-     * Process the given node as an IDENT.  May represent either a column reference or a property reference.
+     * Process the given node as an IDENTIFIER.  May represent either a column reference or a property reference.
      *
      * @param ident The node whose text represents either a column or property reference.
      *
      * @return The processed node.
      */
     protected CommonTree resolveIdent(CommonTree ident) {
-    	String text = ident.getText();
-		String[] replacements;
-		try {
-			replacements = context.getColumnMapper().map( text );
-		}
-		catch( Throwable t ) {
-			replacements = null;
-		}
-
-		if ( replacements == null || replacements.length == 0 ) {
-			return createTreeNode( IDENT, Template.TEMPLATE + "." + text );
-		}
-		else if ( replacements.length == 1 ) {
-			return createTreeNode( IDENT, Template.TEMPLATE + "." + replacements[0] );
-		}
-		else {
-			final CommonTree root = createTreeNode( IDENT_LIST, "{ident list}" );
-			for ( int i = 0; i < replacements.length; i++ ) {
-				final String identText = Template.TEMPLATE + '.' + replacements[i];
-				root.addChild( createTreeNode( IDENT, identText ) );
-			}
-			return root;
-		}
+        return createTreeNode( IDENTIFIER, Template.TEMPLATE + "." + ident.getText() );
     }
 
 	private boolean validateIdentifierAsKeyword(String text) {
@@ -199,8 +173,8 @@ tokens {
 		return token == null ? null : token.getText();
 	}
 
-	private CommonTree createTreeNode(int type, String text) {
-		return new CommonTree( CommonToken( type, text ) );
+	protected CommonTree createTreeNode(int type, String text) {
+		return new CommonTree( new CommonToken( type, text ) );
 	}
 }
 
@@ -238,15 +212,15 @@ sortKey
  */
 expression
 	: hardQuoteExpression
-	| ( IDENT ('.' IDENT)* OPEN_PAREN ) => functionCall
+	| ( IDENTIFIER ('.' IDENTIFIER)* OPEN_PAREN ) => functionCall
     | simplePropertyPath
-    | i=IDENT 	-> {isFunctionName($i)}? 	{ resolveFunction( i ) }
-    			-> 							{ resolveIdent( i ) }
+    | IDENTIFIER 	-> {isFunctionName($IDENTIFIER)}? 	{ resolveFunction( $IDENTIFIER ) }
+    			-> 							{ resolveIdent( $IDENTIFIER ) }
 	;
 
 hardQuoteExpression
 @after { $tree = quotedIdentifier( $tree ); }
-	: HARD_QUOTE IDENT HARD_QUOTE -> IDENT
+	: HARD_QUOTE IDENTIFIER HARD_QUOTE -> IDENTIFIER
 	;
 
 /**
@@ -258,10 +232,10 @@ functionCall
 	;
 
 /**
- * A function-name is an IDENT followed by zero or more (DOT IDENT) sequences
+ * A function-name is an IDENTIFIER followed by zero or more (DOT IDENTIFIER) sequences
  */
 functionName returns [String nameText]
-	: i=IDENT { $nameText = $i.text; } ( '.' i=IDENT { $nameText += ( '.' + $i.text ); } )+
+	: i=IDENTIFIER { $nameText = $i.text; } ( '.' i=IDENTIFIER { $nameText += ( '.' + $i.text ); } )+
 	;
 
 /**
@@ -278,7 +252,7 @@ functionParameterList
 functionParameter :
     expression
     | numericLiteral
-    | qs=QUOTED_STRING -> { quotedString( $qs ) }
+    | qs=STRING_LITERAL -> { quotedString( $qs ) }
 ;
 
 numericLiteral
@@ -298,7 +272,7 @@ collationSpecification! :
 ;
 
 collateKeyword
-	: {(validateIdentifierAsKeyword("collate"))}?=>  id=IDENT
+	: {(validateIdentifierAsKeyword("collate"))}?=>  id=IDENTIFIER
 		->	COLLATE[$id]
 
 	;
@@ -307,7 +281,7 @@ collateKeyword
  * The collation name wrt {@link #collationSpecification}.  Namely, the character-set.
  */
 collationName
-	: IDENT
+	: IDENTIFIER
 	;
 
 /**
@@ -320,69 +294,72 @@ orderingSpecification!
 	;
 
 /**
- * A simple-property-path is an IDENT followed by one or more (DOT IDENT) sequences
+ * A simple-property-path is an IDENTIFIER followed by one or more (DOT IDENTIFIER) sequences
  */
 simplePropertyPath
 @after { $tree = resolveIdent($tree); }
-	: p=simplePropertyPathText -> { createTreeNode(IDENT, $p.pathText) }
+	: p=simplePropertyPathText -> { createTreeNode(IDENTIFIER, $p.pathText) }
 	;
 
 simplePropertyPathText returns [String pathText]
-	: i=IDENT { $pathText = $i.text; } ( '.' i=IDENT { $pathText += ( '.' + $i.text ); } )+
+	: i=IDENTIFIER { $pathText = $i.text; } ( '.' i=IDENTIFIER { $pathText += ( '.' + $i.text ); } )+
 	;
 
 
 
 // Lexer rules ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-WS :  (NEWLINE | SPACE | '\u000C') { $channel=HIDDEN; } ;
+WS
+    : (SPACE | EOL | '\u000C') { $channel=HIDDEN; }
+    ;
 
 fragment
-NEWLINE :
-	( '\r' (options{greedy=true;}: '\n')? | '\n' )
-;
+EOL
+    : ( '\r' (options{greedy=true;}: '\n')? | '\n' )
+    ;
 
 fragment
-SPACE :
-	  ' ' | '\t'
-;
+SPACE
+    : ' '
+    | '\t'
+    ;
 
-OPEN_PAREN : '(';
-CLOSE_PAREN : ')';
+OPEN_PAREN
+    : '('
+    ;
+CLOSE_PAREN
+    : ')'
+    ;
 
-COMMA : ',';
+COMMA
+    : ','
+    ;
 
-HARD_QUOTE : '`';
+HARD_QUOTE
+    : '`'
+    ;
 
-IDENT : ID ;
+INTEGER_LITERAL
+    : (
+        '0'
+        | '1'..'9' ('0'..'9')*
+    )
+    ;
+
+DECIMAL_LITERAL : ('0' | '1'..'9' '0'..'9'*) INTEGER_TYPE_SUFFIX ;
+
+HEX_LITERAL
+    : '0' ('x'|'X') HEX_DIGIT+ INTEGER_TYPE_SUFFIX?
+    ;
+
+OCTAL_LITERAL : '0' ('0'..'7')+ INTEGER_TYPE_SUFFIX? ;
+
 
 fragment
-ID : ID_START_FRAGMENT ( ID_FRAGMENT )* ;
+HEX_DIGIT : ('0'..'9'|'a'..'f'|'A'..'F') ;
 
 fragment
-ID_START_FRAGMENT
-	: '_'
-    |    '$'
-    |    'a'..'z'
-    |    '\u0080'..'\ufffe'
-	;
-
-fragment
-ID_FRAGMENT
-	: ID_START_FRAGMENT
-    |    '0'..'9'
-	;
-
-HEX_LITERAL : '0' ('x'|'X') ('0'..'9'|'a'..'f'|'A'..'F')+ INTEGRAL_TYPE_SUFFIX? ;
-
-OCTAL_LITERAL : '0' ('0'..'7')+ INTEGRAL_TYPE_SUFFIX? ;
-
-DECIMAL_LITERAL : ('0' | '1'..'9' '0'..'9'*) INTEGRAL_TYPE_SUFFIX? ;
-
-fragment
-INTEGRAL_TYPE_SUFFIX
-	: ('l'|'L')
-	;
+INTEGER_TYPE_SUFFIX : ('l'|'L') ;
 
 FLOATING_POINT_LITERAL
     :   ('0'..'9')+ '.' ('0'..'9')* EXPONENT? FLOAT_TYPE_SUFFIX?
@@ -397,14 +374,42 @@ EXPONENT : ('e'|'E') ('+'|'-')? ('0'..'9')+ ;
 fragment
 FLOAT_TYPE_SUFFIX : ('f'|'F'|'d'|'D') ;
 
-QUOTED_STRING :
-	  ('\'' (options{greedy=true;}: ~('\'' | '\r' | '\n') | '\'' '\'' | NEWLINE)* '\'' )+
-;
 
-/**
- * Recognize either double-quote (") or back-tick (`) as delimiting a quoted identifier
- */
-QUOTED_IDENT :
-	    '"' (~('"' | '\r' | '\n') | '"' '"')+ '"'
-	|   '`' (~('`' | '\r' | '\n') | '`' '`')+ '`'
-;
+STRING_LITERAL
+    :   '\'' ( ESCAPE_SEQUENCE | ~('\''|'\\') ) '\''
+    ;
+
+fragment
+ESCAPE_SEQUENCE
+    :   '\\' ('b'|'t'|'n'|'f'|'r'|'\"'|'\''|'\\')
+    |   UNICODE_ESCAPE
+    |   OCTAL_ESCAPE
+    ;
+
+fragment
+OCTAL_ESCAPE
+    :   '\\' ('0'..'3') ('0'..'7') ('0'..'7')
+    |   '\\' ('0'..'7') ('0'..'7')
+    |   '\\' ('0'..'7')
+    ;
+
+fragment
+UNICODE_ESCAPE
+    :   '\\' 'u' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT
+    ;
+
+IDENTIFIER
+	: IDENTIFIER_START_FRAGMENT (IDENTIFER_FRAGMENT)*
+	;
+
+fragment
+IDENTIFIER_START_FRAGMENT
+    : ('a'..'z'|'A'..'Z'|'_'|'$'|'\u0080'..'\ufffe')
+    ;
+
+fragment
+IDENTIFER_FRAGMENT
+    : IDENTIFIER_START_FRAGMENT
+    | '0'..'9'
+    ;
+

@@ -3,8 +3,6 @@ package org.hibernate.sql.ast.common;
 import java.io.Serializable;
 import java.util.HashMap;
 
-import org.hibernate.sql.ast.util.ASTUtil;
-
 /**
  * Represents a canonical join type.
  * <p/>
@@ -62,25 +60,25 @@ public class JoinType implements Serializable {
 		return INSTANCES.get( name );
 	}
 
-	public static JoinType resolve(Node node) {
-		switch ( node.getType() ) {
-			case Sql92TokenTypes.INNER :
-				return JoinType.INNER;
-			case Sql92TokenTypes.LEFT :
-				return JoinType.LEFT;
-			case Sql92TokenTypes.RIGHT :
-				return JoinType.RIGHT;
-			case Sql92TokenTypes.CROSS :
-				return JoinType.CROSS;
-			case Sql92TokenTypes.FULL :
-				return JoinType.FULL;
-			default :
-				throw new IllegalArgumentException(
-						"Cannot resolve join-type node [type=" +
-								ASTUtil.getTokenTypeName( Sql92TokenTypes.class, node.getType() ) +
-								", text=" + node.getText() +
-								"]"
-				);
-		}
-	}
+//	public static JoinType resolve(Node node) {
+//		switch ( node.getType() ) {
+//			case Sql92TokenTypes.INNER :
+//				return JoinType.INNER;
+//			case Sql92TokenTypes.LEFT :
+//				return JoinType.LEFT;
+//			case Sql92TokenTypes.RIGHT :
+//				return JoinType.RIGHT;
+//			case Sql92TokenTypes.CROSS :
+//				return JoinType.CROSS;
+//			case Sql92TokenTypes.FULL :
+//				return JoinType.FULL;
+//			default :
+//				throw new IllegalArgumentException(
+//						"Cannot resolve join-type node [type=" +
+//								ASTUtil.getTokenTypeName( Sql92TokenTypes.class, node.getType() ) +
+//								", text=" + node.getText() +
+//								"]"
+//				);
+//		}
+//	}
 }

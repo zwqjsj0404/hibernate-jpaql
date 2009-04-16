@@ -30,7 +30,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.hibernate.HibernateException;
-import org.hibernate.hql.ast.util.ASTPrinter;
+import org.hibernate.sql.ast.util.ASTPrinter;
+import org.antlr.runtime.CharStream;
+import org.antlr.runtime.TokenStream;
+import org.antlr.runtime.ANTLRStringStream;
+import org.antlr.runtime.CommonTokenStream;
 
 /**
  * A translator which coordinates translation of an <tt>order-by</tt> mapping.
@@ -54,8 +58,8 @@ public class OrderByFragmentTranslator {
 	 * @return The translated fragment.
 	 */
 	public String render(String fragment) {
-		GeneratedOrderByLexer lexer = new GeneratedOrderByLexer( new StringReader( fragment ) );
-		OrderByFragmentParser parser = new OrderByFragmentParser( lexer, context );
+		OrderByParserLexer lexer = new OrderByParserLexer( new ANTLRStringStream( fragment ) );
+		OrderByFragmentParser parser = new OrderByFragmentParser( new CommonTokenStream( lexer ), context );
 		try {
 			parser.orderByFragment();
 		}
@@ -66,22 +70,23 @@ public class OrderByFragmentTranslator {
 			throw new HibernateException( "Unable to parse order-by fragment", t );
 		}
 
-		if ( log.isTraceEnabled() ) {
-			ASTPrinter printer = new ASTPrinter( OrderByTemplateTokenTypes.class );
-			log.trace( printer.showAsString( parser.getAST(), "--- {order-by fragment} ---" ) );
-		}
-
-		OrderByFragmentRenderer renderer = new OrderByFragmentRenderer();
-		try {
-			renderer.orderByFragment( parser.getAST() );
-		}
-		catch ( HibernateException e ) {
-			throw e;
-		}
-		catch ( Throwable t ) {
-			throw new HibernateException( "Unable to render parsed order-by fragment", t );
-		}
-
-		return renderer.getRenderedFragment();
+//		if ( log.isTraceEnabled() ) {
+//			ASTPrinter printer = new ASTPrinter( OrderByParserParser.class );
+//			log.trace( printer.showAsString( parser..getAST(), "--- {order-by fragment} ---" ) );
+//		}
+//
+//		OrderByFragmentRenderer renderer = new OrderByFragmentRenderer();
+//		try {
+//			renderer.orderByFragment( parser.getAST() );
+//		}
+//		catch ( HibernateException e ) {
+//			throw e;
+//		}
+//		catch ( Throwable t ) {
+//			throw new HibernateException( "Unable to render parsed order-by fragment", t );
+//		}
+//
+//		return renderer.getRenderedFragment();
+        return null;
 	}
 }

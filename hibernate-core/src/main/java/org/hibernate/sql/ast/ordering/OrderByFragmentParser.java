@@ -26,24 +26,23 @@ package org.hibernate.sql.ast.ordering;
 
 import java.util.ArrayList;
 
-import antlr.TokenStream;
-import antlr.CommonAST;
-import antlr.TokenStreamException;
-import antlr.collections.AST;
-
 import org.hibernate.sql.Template;
 import org.hibernate.dialect.function.SQLFunction;
 import org.hibernate.util.StringHelper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.antlr.runtime.TokenStream;
+import org.antlr.runtime.CommonToken;
+import org.antlr.runtime.tree.CommonTree;
+import org.antlr.runtime.tree.Tree;
 
 /**
  * Extension of the Antlr-generated parser for the purpose of adding our custom parsing behavior.
  *
  * @author Steve Ebersole
  */
-public class OrderByFragmentParser extends GeneratedOrderByFragmentParser {
+public class OrderByFragmentParser extends OrderByParserParser {
 	private static final Logger log = LoggerFactory.getLogger( OrderByFragmentParser.class );
 
 	private final TranslationContext context;
@@ -51,98 +50,80 @@ public class OrderByFragmentParser extends GeneratedOrderByFragmentParser {
 
 	public OrderByFragmentParser(TokenStream lexer, TranslationContext context) {
 		super( lexer );
-		super.setASTFactory( new Factory() );
 		this.context = context;
 	}
+//
+//
+//	// handle trace logging ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//	public void traceIn(String ruleName) throws TokenStreamException {
+//		if ( inputState.guessing > 0 ) {
+//			return;
+//		}
+//		String prefix = StringHelper.repeat( "-", (traceDepth++ * 2) ) + "->";
+//		trace( prefix + ruleName );
+//	}
+//
+//	public void traceOut(String ruleName) throws TokenStreamException {
+//		if ( inputState.guessing > 0 ) {
+//			return;
+//		}
+//		String prefix = "<-" + StringHelper.repeat( "-", (--traceDepth * 2) );
+//		trace( prefix + ruleName );
+//	}
+//
+//    private void trace(String msg) {
+//		log.trace( msg );
+//	}
 
+protected CommonTree quotedIdentifier(CommonTree ident) {
+    return createTreeNode( IDENTIFIER, Template.TEMPLATE + "." + context.getDialect().quote( '`' + ident.getText() + '`' ) );
+}
 
-	// handle trace logging ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	public void traceIn(String ruleName) throws TokenStreamException {
-		if ( inputState.guessing > 0 ) {
-			return;
-		}
-		String prefix = StringHelper.repeat( "-", (traceDepth++ * 2) ) + "->";
-		trace( prefix + ruleName );
+    protected CommonTree quotedString(CommonTree ident) {
+		return createTreeNode( IDENTIFIER, context.getDialect().quote( ident.getText() ) );
 	}
 
-	public void traceOut(String ruleName) throws TokenStreamException {
-		if ( inputState.guessing > 0 ) {
-			return;
-		}
-		String prefix = "<-" + StringHelper.repeat( "-", (--traceDepth * 2) );
-		trace( prefix + ruleName );
-	}
+    protected boolean isFunctionName(CommonToken token) {
+        return context.getSqlFunctionRegistry().hasFunction( token.getText() );
+    }
 
-    private void trace(String msg) {
-		log.trace( msg );
-	}
+    protected CommonTree resolveFunction(CommonTree tree) {
+		Tree argumentList = tree.getChild( 0 );
+		assert "{param list}".equals( argumentList.getText() );
 
-
-	/**
-	 * {@inheritDoc}
-	 */
-	protected AST quotedIdentifier(AST ident) {
-		return getASTFactory().create(
-				IDENT,
-				Template.TEMPLATE + "." + context.getDialect().quote( '`' + ident.getText() + '`' )
-		);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	protected AST quotedString(AST ident) {
-		return getASTFactory().create( IDENT, context.getDialect().quote( ident.getText() ) );
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	protected boolean isFunctionName(AST ast) {
-		return context.getSqlFunctionRegistry().hasFunction( ast.getText() );
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	protected AST resolveFunction(AST ast) {
-		AST child = ast.getFirstChild();
-		assert "{param list}".equals(  child.getText() );
-		child = child.getFirstChild();
-
-		final String functionName = ast.getText();
+		final String functionName = tree.getText();
 		final SQLFunction function = context.getSqlFunctionRegistry().findSQLFunction( functionName );
+
 		if ( function == null ) {
+            // If the function is not registered with the session factory we just need to render it as-is
+            // including its arguments...
 			String text = functionName;
-			if ( child != null ) {
-				text += '(';
-				while ( child != null ) {
-					text += child.getText();
-					child = child.getNextSibling();
-					if ( child != null ) {
-						text += ", ";
-					}
-				}
-				text += ')';
-			}
-			return getASTFactory().create( IDENT, text );
+            int count = argumentList.getChildCount();
+            if ( count > 0 ) {
+                text += '(';
+                for ( int i = 0; i < count; i++ ) {
+                    Tree argument = argumentList.getChild( i );
+                    text += argument.getText();
+                    if ( i < count ) {
+                        text += ", ";
+                    }
+                }
+                text += ')';
+            }
+            return createTreeNode( IDENTIFIER, text );
 		}
 		else {
 			ArrayList expressions = new ArrayList();
-			while ( child != null ) {
-				expressions.add( child.getText() );
-				child = child.getNextSibling();
-			}
+            for ( int i = 0; i < argumentList.getChildCount(); i++ ) {
+                expressions.add( argumentList.getChild( i ).getText() );
+            }
 			final String text = function.render( expressions, context.getSessionFactory() );
-			return getASTFactory().create( IDENT, text );
+			return createTreeNode( IDENTIFIER, text );
 		}
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	protected AST resolveIdent(AST ident) {
+    protected CommonTree resolveIdent(CommonTree ident) {
 		String text = ident.getText();
 		String[] replacements;
 		try {
@@ -153,62 +134,62 @@ public class OrderByFragmentParser extends GeneratedOrderByFragmentParser {
 		}
 
 		if ( replacements == null || replacements.length == 0 ) {
-			return getASTFactory().create( IDENT, Template.TEMPLATE + "." + text );
+			return createTreeNode( IDENTIFIER, Template.TEMPLATE + "." + text );
 		}
 		else if ( replacements.length == 1 ) {
-			return getASTFactory().create( IDENT, Template.TEMPLATE + "." + replacements[0] );
+			return createTreeNode( IDENTIFIER, Template.TEMPLATE + "." + replacements[0] );
 		}
 		else {
-			final AST root = getASTFactory().create( IDENT_LIST, "{ident list}" );
+            final CommonTree root = createTreeNode( IDENT_LIST, "{ident list}" );
 			for ( int i = 0; i < replacements.length; i++ ) {
 				final String identText = Template.TEMPLATE + '.' + replacements[i];
-				root.addChild( getASTFactory().create( IDENT, identText ) );
+				root.addChild( createTreeNode( IDENTIFIER, identText ) );
 			}
 			return root;
 		}
 	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	protected AST postProcessSortSpecification(AST sortSpec) {
-		assert SORT_SPEC == sortSpec.getType();
-		SortSpecification sortSpecification = ( SortSpecification ) sortSpec;
-		AST sortKey = sortSpecification.getSortKey();
-		if ( IDENT_LIST == sortKey.getFirstChild().getType() ) {
-			AST identList = sortKey.getFirstChild();
-			AST ident = identList.getFirstChild();
-			AST holder = new CommonAST();
-			do {
-				holder.addChild(
-						createSortSpecification(
-								ident,
-								sortSpecification.getCollation(),
-								sortSpecification.getOrdering()
-						)
-				);
-				ident = ident.getNextSibling();
-			} while ( ident != null );
-			sortSpec = holder.getFirstChild();
-		}
-		return sortSpec;
-	}
-
-	private SortSpecification createSortSpecification(
-			AST ident,
-			CollationSpecification collationSpecification,
-			OrderingSpecification orderingSpecification) {
-		AST sortSpecification = getASTFactory().create( SORT_SPEC, "{{sort specification}}" );
-		AST sortKey = getASTFactory().create( SORT_KEY, "{{sort key}}" );
-		AST newIdent = getASTFactory().create( ident.getType(), ident.getText() );
-		sortKey.setFirstChild( newIdent );
-		sortSpecification.setFirstChild( sortKey );
-		if ( collationSpecification != null ) {
-			sortSpecification.addChild( collationSpecification );
-		}
-		if ( orderingSpecification != null ) {
-			sortSpecification.addChild( orderingSpecification );
-		}
-		return ( SortSpecification ) sortSpecification;
-	}
+//
+//	/**
+//	 * {@inheritDoc}
+//	 */
+//	protected AST postProcessSortSpecification(AST sortSpec) {
+//		assert SORT_SPEC == sortSpec.getType();
+//		SortSpecification sortSpecification = ( SortSpecification ) sortSpec;
+//		AST sortKey = sortSpecification.getSortKey();
+//		if ( IDENT_LIST == sortKey.getFirstChild().getType() ) {
+//			AST identList = sortKey.getFirstChild();
+//			AST ident = identList.getFirstChild();
+//			AST holder = new CommonAST();
+//			do {
+//				holder.addChild(
+//						createSortSpecification(
+//								ident,
+//								sortSpecification.getCollation(),
+//								sortSpecification.getOrdering()
+//						)
+//				);
+//				ident = ident.getNextSibling();
+//			} while ( ident != null );
+//			sortSpec = holder.getFirstChild();
+//		}
+//		return sortSpec;
+//	}
+//
+//	private SortSpecification createSortSpecification(
+//			AST ident,
+//			CollationSpecification collationSpecification,
+//			OrderingSpecification orderingSpecification) {
+//		AST sortSpecification = getASTFactory().create( SORT_SPEC, "{{sort specification}}" );
+//		AST sortKey = getASTFactory().create( SORT_KEY, "{{sort key}}" );
+//		AST newIdent = getASTFactory().create( ident.getType(), ident.getText() );
+//		sortKey.setFirstChild( newIdent );
+//		sortSpecification.setFirstChild( sortKey );
+//		if ( collationSpecification != null ) {
+//			sortSpecification.addChild( collationSpecification );
+//		}
+//		if ( orderingSpecification != null ) {
+//			sortSpecification.addChild( orderingSpecification );
+//		}
+//		return ( SortSpecification ) sortSpecification;
+//	}
 }

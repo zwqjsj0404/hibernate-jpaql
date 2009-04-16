@@ -22,25 +22,27 @@
  * Boston, MA  02110-1301  USA
  *
  */
-package org.hibernate.hql.ast;
+package org.hibernate.sql.ast.util;
 
-import antlr.ASTFactory;
-import org.hibernate.hql.ast.tree.Node;
+import org.hibernate.HibernateException;
 
 /**
- * User: Joshua Davis<br>
- * Date: Sep 23, 2005<br>
- * Time: 12:30:01 PM<br>
+ * Contract for mapping a (an assumed) property reference to its columns.
+ * <p/>
+ * todo : this should probably get moved into the general sql-rendering package.
+ * 
+ * @author Steve Ebersole
  */
-public class HqlASTFactory extends ASTFactory {
-
+public interface ColumnMapper {
 	/**
-	 * Returns the class for a given token type (a.k.a. AST node type).
+	 * Resolve the property reference to its underlying columns.
 	 *
-	 * @param tokenType The token type.
-	 * @return Class - The AST node class to instantiate.
+	 * @param reference The property reference name.
+	 *
+	 * @return The underlying columns, or null if the property reference is unknown.
+	 *
+	 * @throws HibernateException Generally indicates that the property reference is unkown; interpretation is the
+	 * same as a null return.
 	 */
-	public Class getASTNodeType(int tokenType) {
-		return Node.class;
-	}
+	public String[] map(String reference) throws HibernateException;
 }

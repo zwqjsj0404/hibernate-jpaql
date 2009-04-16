@@ -41,7 +41,6 @@ import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.MappingException;
 import org.hibernate.QueryException;
-import org.hibernate.hql.ast.util.SessionFactoryHelper;
 import org.hibernate.criterion.CriteriaQuery;
 import org.hibernate.criterion.Projection;
 import org.hibernate.engine.QueryParameters;
@@ -509,7 +508,7 @@ public class CriteriaQueryTranslator implements CriteriaQuery {
 		// Detect discriminator values...
 		if ( value instanceof Class ) {
 			Class entityClass = ( Class ) value;
-			Queryable q = SessionFactoryHelper.findQueryableUsingImports( sessionFactory, entityClass.getName() );
+			Queryable q = findQueryableUsingImports( entityClass.getName() );
 			if ( q != null ) {
 				Type type = q.getDiscriminatorType();
 				String stringValue = q.getDiscriminatorSQLValue();
@@ -534,6 +533,26 @@ public class CriteriaQueryTranslator implements CriteriaQuery {
 		        value,
 		        EntityMode.POJO
 		);
+	}
+
+
+	/**
+	 * Given a (potentially unqualified) class name, locate its persister.
+	 *
+	 * @param className The (potentially unqualified) class name.
+	 * @return The defined persister for this class, or null if none found.
+	 */
+	private Queryable findQueryableUsingImports(String className) {
+		final String importedClassName = sessionFactory.getImportedClassName( className );
+		if ( importedClassName == null ) {
+			return null;
+		}
+		try {
+			return ( Queryable ) sessionFactory.getEntityPersister( importedClassName );
+		}
+		catch ( MappingException me ) {
+			return null;
+		}
 	}
 
 	private PropertyMapping getPropertyMapping(String entityName)
