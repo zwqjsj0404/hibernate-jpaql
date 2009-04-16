@@ -9,9 +9,6 @@ tokens {
 	FILTER;
 
 	ALIAS_NAME;
-
-	EXPR;
-	LOGICAL_EXPR;
 	
 	IS_NOT_NULL;
 	IS_NULL;
@@ -369,15 +366,11 @@ setClause
 	;
 
 assignment
-	:	assignmentField EQUALS^ newValue
+	:	assignmentField EQUALS^ concatenation
 	;
 
 assignmentField
 	:	dotIdentifierPath -> ^(ASSIGNMENT_FIELD dotIdentifierPath)
-	;
-
-newValue
-	:	concatenation -> ^(EXPR concatenation)
 	;
 
 deleteStatement
@@ -429,7 +422,7 @@ groupingSpecification
 
 groupingValue
 	:	concatenation collationSpecification?
-		-> ^(GROUPING_VALUE ^(EXPR concatenation) collationSpecification?)
+		-> ^(GROUPING_VALUE concatenation collationSpecification?)
 	;
 
 whereClause
@@ -541,7 +534,6 @@ explicitSelectItem
 
 selectExpression
 	:	expression aliasClause
-		-> ^(EXPR expression) aliasClause?
 	;
 
 aliasClause
@@ -590,7 +582,6 @@ sortSpecification
 
 sortKey
 	:	concatenation
-		-> ^(EXPR concatenation)
 	;
 
 collationSpecification
@@ -609,7 +600,6 @@ orderingSpecification
 
 logicalExpression
 	:	expression
-		-> ^(LOGICAL_EXPR expression)
 	;
 
 expression
@@ -667,20 +657,19 @@ relationalExpression
 	;
 
 likeEscape
-	:	escape_key concatenation
-		-> ^(escape_key ^(EXPR concatenation))
+	:	escape_key^ concatenation
 	;
 
 inList
 	:	collectionExpression
 		-> ^(IN_LIST collectionExpression)
 	|	LEFT_PAREN ( expression (COMMA expression)* | subQuery ) RIGHT_PAREN
-		-> ^(IN_LIST ^(EXPR expression)* subQuery?)
+		-> ^(IN_LIST expression* subQuery?)
 	;
 
 betweenList
 	:	concatenation and_key concatenation
-		-> ^(BETWEEN_LIST ^(EXPR concatenation)+)
+		-> ^(BETWEEN_LIST concatenation+)
 	;
 
 concatenation
@@ -713,10 +702,8 @@ caseExpression
 	;
 
 caseAbbreviation
-	:	nullif_key LEFT_PAREN concatenation COMMA concatenation RIGHT_PAREN
-		-> ^(nullif_key ^(EXPR concatenation)+)
-	|	coalesce_key LEFT_PAREN concatenation (COMMA concatenation)* RIGHT_PAREN
-		-> ^(coalesce_key ^(EXPR concatenation)+)
+	:	nullif_key^ LEFT_PAREN! concatenation COMMA! concatenation RIGHT_PAREN!
+	|	coalesce_key^ LEFT_PAREN! concatenation (COMMA! concatenation)* RIGHT_PAREN!
 	;
 
 caseSpecification
@@ -728,17 +715,15 @@ backtrack=true;
 
 simpleCase
 	:	case_key concatenation simpleCaseWhenClause+ elseClause? end_key
-	->	^(SIMPLE_CASE[$case_key.start, $case_key.text] ^(EXPR concatenation) simpleCaseWhenClause+ elseClause?)
+	->	^(SIMPLE_CASE[$case_key.start, $case_key.text] concatenation simpleCaseWhenClause+ elseClause?)
 	;
 
 simpleCaseWhenClause
-	:	when_key concatenation then_key concatenation
-		-> ^(when_key ^(EXPR concatenation)+)
+	:	when_key^ concatenation then_key! concatenation
 	;
 
 elseClause
-	:	else_key concatenation
-		-> ^(else_key ^(EXPR concatenation))
+	:	else_key^ concatenation
 	;
 
 searchedCase
@@ -747,8 +732,7 @@ searchedCase
 	;
 
 searchedWhenClause
-	:	when_key logicalExpression then_key concatenation
-		-> ^(when_key logicalExpression ^(EXPR concatenation))
+	:	when_key^ logicalExpression then_key! concatenation
 	;
 
 quantifiedExpression
@@ -784,18 +768,15 @@ standardFunction
 	;
 
 castFunction
-	:	cast_key LEFT_PAREN concatenation as_key dataType RIGHT_PAREN
-		-> ^(cast_key ^(EXPR concatenation) dataType)
+	:	cast_key^ LEFT_PAREN! concatenation as_key! dataType RIGHT_PAREN!
 	;
 
 concatFunction
-	:	concat_key LEFT_PAREN concatenation ( COMMA concatenation )+ RIGHT_PAREN
-		-> ^(concat_key ^(EXPR concatenation)+)
+	:	concat_key^ LEFT_PAREN! concatenation ( COMMA! concatenation )+ RIGHT_PAREN!
 	;
 
 substringFunction
-	:	substring_key LEFT_PAREN concatenation COMMA concatenation ( COMMA concatenation)? RIGHT_PAREN
-		-> ^(substring_key ^(EXPR concatenation)+)
+	:	substring_key^ LEFT_PAREN! concatenation COMMA! concatenation ( COMMA! concatenation)? RIGHT_PAREN!
 	;
 
 trimFunction
@@ -808,12 +789,12 @@ options{
 k=2;
 }
 @init {boolean hasSecondExpression = false;}
-	:	trimSpecification from_key concatenation -> ^(trimSpecification ^(EXPR STRING_LITERAL[" "]) ^(EXPR concatenation))
-	|	trimSpecification concatenation from_key concatenation -> ^(trimSpecification ^(EXPR concatenation)+)
-	|	from_key concatenation -> ^(BOTH ^(EXPR STRING_LITERAL[" "]) ^(EXPR concatenation))
+	:	trimSpecification from_key concatenation -> ^(trimSpecification STRING_LITERAL[" "] concatenation)
+	|	trimSpecification concatenation from_key concatenation -> ^(trimSpecification concatenation+)
+	|	from_key concatenation -> ^(BOTH STRING_LITERAL[" "] concatenation)
 	|	cn=concatenation ( from_key concatenation {hasSecondExpression = true;} )?
-		-> {hasSecondExpression}? ^(BOTH ^(EXPR concatenation)+)
-		-> ^(BOTH ^(EXPR STRING_LITERAL[" "]) ^(EXPR $cn))
+		-> {hasSecondExpression}? ^(BOTH concatenation+)
+		-> ^(BOTH STRING_LITERAL[" "] $cn)
 	;
 
 trimSpecification
@@ -823,65 +804,55 @@ trimSpecification
 	;
 
 upperFunction
-	:	upper_key LEFT_PAREN concatenation RIGHT_PAREN
-		-> ^(upper_key ^(EXPR concatenation))
+	:	upper_key^ LEFT_PAREN! concatenation RIGHT_PAREN!
 	;
 
 lowerFunction
-	:	lower_key LEFT_PAREN concatenation RIGHT_PAREN
-		-> ^(lower_key ^(EXPR concatenation))
+	:	lower_key^ LEFT_PAREN! concatenation RIGHT_PAREN!
 	;
 
 lengthFunction
-	:	length_key LEFT_PAREN concatenation RIGHT_PAREN
-		-> ^(length_key ^(EXPR concatenation))
+	:	length_key^ LEFT_PAREN! concatenation RIGHT_PAREN!
 	;
 
 locateFunction
-	:	locate_key LEFT_PAREN concatenation COMMA concatenation ( COMMA concatenation )? RIGHT_PAREN
-		-> ^(locate_key ^(EXPR concatenation)+)
+	:	locate_key^ LEFT_PAREN! concatenation COMMA! concatenation ( COMMA! concatenation )? RIGHT_PAREN!
 	;
 
 absFunction
-	:	abs_key LEFT_PAREN concatenation RIGHT_PAREN
-		-> ^(abs_key ^(EXPR concatenation))
+	:	abs_key^ LEFT_PAREN! concatenation RIGHT_PAREN!
 	;
 
 sqrtFunction
-	:	sqrt_key LEFT_PAREN concatenation RIGHT_PAREN
-		-> ^(sqrt_key ^(EXPR concatenation))
+	:	sqrt_key^ LEFT_PAREN! concatenation RIGHT_PAREN!
 	;
 
 modFunction
-	:	mod_key LEFT_PAREN concatenation COMMA concatenation RIGHT_PAREN
-		-> ^(mod_key ^(EXPR concatenation)+)
+	:	mod_key^ LEFT_PAREN! concatenation COMMA! concatenation RIGHT_PAREN!
 	;
 
 sizeFunction
-	:	size_key LEFT_PAREN propertyReference RIGHT_PAREN
-		-> ^(size_key propertyReference)
+	:	size_key^ LEFT_PAREN! propertyReference RIGHT_PAREN!
 	;
 
 indexFunction
-	:	index_key LEFT_PAREN aliasReference RIGHT_PAREN
-		-> ^(index_key aliasReference)
+	:	index_key^ LEFT_PAREN! aliasReference RIGHT_PAREN!
 	;
 
 currentDateFunction
-	:	current_date_key^ ( LEFT_PAREN! RIGHT_PAREN! )?
+	:	current_date_key ( LEFT_PAREN! RIGHT_PAREN! )?
 	;
 
 currentTimeFunction
-	:	current_time_key^ ( LEFT_PAREN! RIGHT_PAREN! )?
+	:	current_time_key ( LEFT_PAREN! RIGHT_PAREN! )?
 	;
 
 currentTimestampFunction
-	:	current_timestamp_key^ ( LEFT_PAREN! RIGHT_PAREN! )?
+	:	current_timestamp_key ( LEFT_PAREN! RIGHT_PAREN! )?
 	;
 
 extractFunction
-	:	extract_key LEFT_PAREN extractField from_key concatenation RIGHT_PAREN
-	-> ^(extract_key extractField ^(EXPR concatenation))
+	:	extract_key^ LEFT_PAREN! extractField from_key! concatenation RIGHT_PAREN!
 	;
 
 extractField
@@ -908,34 +879,25 @@ timeZoneField
 	;
 
 positionFunction
-	:	position_key LEFT_PAREN concatenation in_key concatenation RIGHT_PAREN
-		-> ^(position_key ^(EXPR concatenation)+)
+	:	position_key^ LEFT_PAREN! concatenation in_key! concatenation RIGHT_PAREN!
 	;
 
 charLengthFunction
-	:	character_length_key LEFT_PAREN concatenation RIGHT_PAREN
-		-> ^(character_length_key ^(EXPR concatenation))
+	:	character_length_key^ LEFT_PAREN! concatenation RIGHT_PAREN!
 	;
 
 octetLengthFunction
-	:	octet_length_key LEFT_PAREN concatenation RIGHT_PAREN
-		-> ^(octet_length_key ^(EXPR concatenation))	
+	:	octet_length_key^ LEFT_PAREN! concatenation RIGHT_PAREN!
 	;
 
 bitLengthFunction
-	:	bit_length_key LEFT_PAREN concatenation RIGHT_PAREN
-		-> ^(bit_length_key ^(EXPR concatenation))
+	:	bit_length_key^ LEFT_PAREN! concatenation RIGHT_PAREN!
 	;
 
 setFunction
-	:	( sum_key^ | avg_key^ | max_key^ | min_key^ ) LEFT_PAREN! additiveExpressionWrapper RIGHT_PAREN!
+	:	( sum_key^ | avg_key^ | max_key^ | min_key^ ) LEFT_PAREN! additiveExpression RIGHT_PAREN!
 	|	count_key LEFT_PAREN ( ASTERISK | ( ( distinct_key | all_key )? countFunctionArguments ) ) RIGHT_PAREN
 		-> ^(count_key ASTERISK? distinct_key? all_key? countFunctionArguments?)
-	;
-
-additiveExpressionWrapper
-	:	additiveExpression
-		-> ^(EXPR additiveExpression)
 	;
 
 countFunctionArguments
@@ -996,13 +958,12 @@ parameterSpecification
 expressionOrVector
 @init {boolean isVectorExp = false;}
 	:	expression (vectorExpr {isVectorExp = true;})?
-		-> {isVectorExp}? ^(VECTOR_EXPR ^(EXPR expression) vectorExpr) 
-		-> ^(EXPR expression)
+		-> {isVectorExp}? ^(VECTOR_EXPR expression vectorExpr) 
+		-> expression
 	;
 
 vectorExpr
-	:	COMMA expression (COMMA expression)*
-		-> ^(EXPR expression)+
+	:	COMMA! expression (COMMA! expression)*
 	;
 
 identPrimary
@@ -1015,8 +976,7 @@ identPrimary
 	;
 
 exprList
-	:	expression? (COMMA expression)*
-	->	^(EXPR expression)*
+	:	expression? (COMMA! expression)*
 	;
 
 constant
@@ -1066,8 +1026,8 @@ dotIdentifierPath
 path
 	:	IDENTIFIER 
 		(	DOT^ IDENTIFIER
-		|	LEFT_SQUARE^ expression RIGHT_SQUARE
-		|	LEFT_SQUARE^ RIGHT_SQUARE
+		|	LEFT_SQUARE^ expression RIGHT_SQUARE!
+		|	LEFT_SQUARE^ RIGHT_SQUARE!
 		)*
 	;
 
