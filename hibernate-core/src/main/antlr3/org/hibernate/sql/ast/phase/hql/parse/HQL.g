@@ -650,8 +650,8 @@ relationalExpression
 			-> {isNegated}? ^(NOT_LIKE[$not_key.start, "not like"] $relationalExpression concatenation likeEscape?) 
 			-> ^(like_key $relationalExpression concatenation likeEscape?)
 		|	member_of_key propertyReference
-			-> {isNegated}? ^(NOT_IN[$not_key.start, "not in"] ^(IN_LIST ^(QUERY ^(SELECT_FROM ^(FROM propertyReference)))))
-			-> ^(IN[$member_of_key.start, "in"] ^(IN_LIST ^(QUERY ^(SELECT_FROM ^(FROM propertyReference)))))
+			-> {isNegated}? ^(NOT_IN[$not_key.start, "not in"] $relationalExpression ^(IN_LIST ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM propertyReference))))))
+			-> ^(IN[$member_of_key.start, "in"] $relationalExpression ^(IN_LIST ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM propertyReference))))))
 		)
 	)?
 	;

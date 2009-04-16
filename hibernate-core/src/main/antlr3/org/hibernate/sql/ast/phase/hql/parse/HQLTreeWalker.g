@@ -117,7 +117,9 @@ fromClause
 	;
 
 persisterSpaces
-	:	^(PERSISTER_SPACE persisterSpace)
+	:	propertyReference
+	|	^(GENERIC_ELEMENT identPrimary)
+	|	^(PERSISTER_SPACE persisterSpace)
 	;
 
 persisterSpace
