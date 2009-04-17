@@ -6,159 +6,145 @@ options {
 
 tokens {
 //VIRTUAL TOKENS
-	FILTER;
-
 	ALIAS_NAME;
-	
+	ALIAS_REF;
+	BETWEEN_LIST;
+	COLLATE;
+	COLLECTION_EXPRESSION;
+	DOT_CLASS;
+	DYNAMIC_INSTANTIATION_ARG;
+	DYNAMIC_INSTANTIATION;
+	ENTITY_NAME;
+	ENTITY_PERSISTER_REF;
+	FILTER;
+	GENERAL_FUNCTION_CALL;
+	GENERIC_ELEMENT;
+	GROUPING_VALUE;
+	IN_LIST;
+	INSERTABILITY_SPEC;
+	IS_NOT_EMPTY;
 	IS_NOT_NULL;
 	IS_NULL;
-	IS_NOT_EMPTY;
-	NOT_IN;
-	NOT_BETWEEN;
-	NOT_LIKE;
-
-	BETWEEN_LIST;
-	SIMPLE_CASE;
-	SEARCHED_CASE;
-	UNARY_MINUS;
-	UNARY_PLUS;	
-	IN_LIST;
-
-	DOT_CLASS;
-	COLLECTION_EXPRESSION;
-	GENERAL_FUNCTION_CALL;
 	JAVA_CONSTANT;
-	GENERIC_ELEMENT;
-	NAMED_PARAM;
 	JPA_PARAM;
-
-	COLLATE;
-
+	NAMED_PARAM;
+	NOT_BETWEEN;
+	NOT_IN;
+	NOT_LIKE;
+	PERSISTER_JOIN;
+	PERSISTER_SPACE;
+	PROP_FETCH;
+	PROPERTY_JOIN;
+	PROPERTY_REFERENCE;
+	QUALIFIED_JOIN;
+	QUERY_SPEC;
+	QUERY;
+	SEARCHED_CASE;
+	SELECT_FROM;
+	SELECT_ITEM;
+	SELECT_LIST;
+	SIMPLE_CASE;
+	SORT_SPEC;
+	UNARY_MINUS;
+	UNARY_PLUS;
 	VECTOR_EXPR;
 
-	QUERY;
-	QUERY_SPEC;
-	GROUPING_VALUE;
-	SELECT_FROM;
-	SELECT_LIST;
-	PERSISTER_SPACE;
-	
-	PERSISTER_JOIN;
-	DYNAMIC_INSTANTIATION_ARG;
-	SELECT_ITEM;
-	DYNAMIC_INSTANTIATION;
-	ENTITY_PERSISTER_REF;
-	PROPERTY_JOIN;
-	PROP_FETCH;
-	SORT_SPEC;
-	
-	ASSIGNMENT_FIELD;
-
-	INSERTABILITY_SPEC;
-	INSERTABLE_PROPERTY;
-
-	QUALIFIED_JOIN;
-	ENTITY_NAME;
-	PROPERTY_REFERENCE;
-	ALIAS_REF;
-
 //SOFT KEYWORDS
-	ELSE;
-	CLASS;
-	NEW;
-	OBJECT;
-	WHERE;
-	ASC;
-	DESC;
-	UNION;
-	INTERSECT;
-	ALL;
-	EXCEPT;
-	DISTINCT;
-	SELECT;
-	AS;
-	IN;
-	PROPERTIES;
-	FETCH;
-	ELEMENTS;
-	INDICES;
-	CROSS;
-	JOIN;
-	INNER;
-	OUTER;
-	LEFT;
-	RIGHT;
-	FULL;
-	WITH;
-	ON;
-	GROUP_BY;
-	HAVING;
-	INSERT;
-	INTO;
-	DELETE;
-	SET;
-	VERSIONED;
-	UPDATE;
-	OR;
-	AND;
-	NOT;
-	IS_EMPTY;
-	IS;
-	ESCAPE;
-	BETWEEN;
-	LIKE;
-	MEMBER_OF;
-	THEN;
-	END;
-	WHEN;
-	NULLIF;
-	COALESCE;
-	EXISTS;
-	SOME;
-	ANY;
-	SUBSTRING;
-	CONCAT;
-	CAST;
-	LEADING;
-	TRAILING;
-	BOTH;
-	TRIM;
-	UPPER;
-	LOWER;
-	LENGTH;
-	LOCATE;
 	ABS;
-	SQRT;
-	MOD;
-	SIZE;
-	INDEX;
+	ALL;
+	AND;
+	ANY;
+	AS;
+	ASC;
+	AVG;
+	BETWEEN;
+	BIT_LENGTH;
+	BOTH;
+	CAST;
+	CHARACTER_LENGTH;
+	CLASS;
+	COALESCE;
+	CONCAT;
+	COUNT;
+	CROSS;
 	CURRENT_DATE;
 	CURRENT_TIME;
 	CURRENT_TIMESTAMP;
-	EXTRACT;
-	SECOND;
-	YEAR;
-	MONTH;
 	DAY;
+	DELETE;
+	DESC;
+	DISTINCT;
+	ELEMENTS;
+	ELSE;
+	END;
+	ESCAPE;
+	EXCEPT;
+	EXISTS;
+	EXTRACT;
+	FETCH;
+	FROM;
+	FULL;
+	GROUP_BY;
+	HAVING;
 	HOUR;
-	MINUTE;
-	TIMEZONE_HOUR;
-	TIMEZONE_MINUTE;
-	POSITION;
-	CHARACTER_LENGTH;
-	OCTET_LENGTH;
-	BIT_LENGTH;
-	SUM;
-	AVG;
+	IN;
+	INDEX;
+	INDICES;
+	INNER;
+	INSERT;
+	INTERSECT;
+	INTO;
+	IS_EMPTY;
+	IS;
+	JOIN;
+	LEADING;
+	LEFT;
+	LENGTH;
+	LIKE;
+	LOCATE;
+	LOWER;
 	MAX;
-	MIN;
-	COUNT;
 	MAXELEMENT;
 	MAXINDEX;
+	MEMBER_OF;
+	MIN;
 	MINELEMENT;
 	MININDEX;
+	MINUTE;
+	MOD;
+	MONTH;
+	NEW;
+	NOT;
+	NULLIF;
+	OCTET_LENGTH;
+	ON;
+	OR;
 	ORDER_BY;
-	FROM;
+	OUTER;
+	POSITION;
+	PROPERTIES;
+	RIGHT;
+	SECOND;
+	SELECT;
+	SET;
+	SIZE;
+	SOME;
+	SQRT;
+	SUBSTRING;
+	SUM;
+	THEN;
+	TIMEZONE_HOUR;
+	TIMEZONE_MINUTE;
+	TRAILING;
+	TRIM;
+	UNION;
+	UPDATE;
+	UPPER;
+	VERSIONED;
+	WHEN;
+	WHERE;
+	WITH;
+	YEAR;
 }
 
 @parser::header {
@@ -194,6 +180,8 @@ tokens {
 package org.hibernate.sql.ast.phase.hql.parse;
 
 import java.util.LinkedList;
+import java.util.HashSet;
+import java.util.Set;
 }
 
 @lexer::header {
@@ -249,7 +237,10 @@ package org.hibernate.sql.ast.phase.hql.parse;
 }
 
 @parser::members {
-    private List<String> errorMessages = new LinkedList<String>();
+	Stack entitySplitStack = new Stack();
+	ParserContext context = new ParserContextDefaultImpl();
+
+    private List errorMessages = new LinkedList();
 
 	private boolean validateIdentifierKey(String text) {
 		return validateLT(1, text);
@@ -278,17 +269,16 @@ package org.hibernate.sql.ast.phase.hql.parse;
        return false;
 	}
 	
-	public List<String> getErrorMessages(){
+	public List getErrorMessages(){
 	   return errorMessages;
 	}
 
-    @Override
     public void reportError( RecognitionException e ) {
         errorMessages.add(generateError(getRuleInvocationStack(e, this.getClass().getName()), this.getTokenNames(), e));
         super.reportError(e);
     }
 
-    private String generateError( List<Object> invocationStack,
+    private String generateError( List invocationStack,
                                 String[] tokenNames,
                                 RecognitionException e ) {
         String localization = invocationStack + ": line " + e.line + ":" + e.charPositionInLine + " ";
@@ -340,7 +330,14 @@ package org.hibernate.sql.ast.phase.hql.parse;
         
         return message;
     }
-
+    
+    private List extractEntityNames(String entityName) throws RecognitionException {
+    	List implementors = context.getEntityImplementors(entityName);
+    	if (implementors == null){
+    		throw new RecognitionException( );
+    	}
+    	return implementors;
+    }
 }
 
 filterStatement[String collectionRole]
@@ -358,7 +355,10 @@ statement
 	;
 
 updateStatement
-	:	udpate_key^ versioned_key? from_key!? entityName aliasClause setClause whereClause?
+@init	{	if (state.backtracking == 0) entitySplitStack.push(Boolean.FALSE);	}
+@after	{	entitySplitStack.pop();	}
+	:	udpate_key^
+		versioned_key? from_key!? entityName aliasClause setClause whereClause?
 	;
 
 setClause
@@ -370,17 +370,23 @@ assignment
 	;
 
 assignmentField
-	:	dotIdentifierPath -> ^(ASSIGNMENT_FIELD dotIdentifierPath)
+	:	dotIdentifierPath -> ^(PROPERTY_REFERENCE dotIdentifierPath)
 	;
 
 deleteStatement
+@init	{	if (state.backtracking == 0) entitySplitStack.push(Boolean.FALSE);	}
+@after	{	entitySplitStack.pop();	}
 	:	delete_key^ from_key!? entityName aliasClause whereClause?
 	;
 
 insertStatement
-	:	insert_key^ intoClause selectStatement
+@init	{	if (state.backtracking == 0) entitySplitStack.push(Boolean.FALSE);	}
+@after	{	entitySplitStack.pop();	}
+	:	insert_key^ 
+		intoClause selectStatement
 	;
 
+//TODO: Generate an exception when try to use a polimorfic entity at INTO clause
 intoClause
 	:	into_key^ entityName insertabilitySpecification
 	;
@@ -391,7 +397,7 @@ insertabilitySpecification
 	;
 
 insertablePropertySpecification
-	:	dotIdentifierPath -> ^(INSERTABLE_PROPERTY dotIdentifierPath)
+	:	dotIdentifierPath -> ^(PROPERTY_REFERENCE dotIdentifierPath)
 	;
 
 selectStatement
@@ -399,7 +405,10 @@ selectStatement
 		-> ^(QUERY queryExpression orderByClause?)
 	;
 
+//Think about the exception generation where Polimorfic queris are used inside a Mix of results (union, intersect and except) 
 queryExpression
+@init	{	if (state.backtracking == 0) entitySplitStack.push(Boolean.FALSE);	}
+@after	{	entitySplitStack.pop();	}
 	:	querySpec ( ( union_key^ | intersect_key^ | except_key^ ) all_key? querySpec )*
 	;
 
@@ -440,11 +449,13 @@ subQuery
 	;
 
 fromClause
-	:	from_key^ persisterSpaces
+	:	from_key^ 
+			persisterSpaces
 	;
 
 persisterSpaces
 	:	persisterSpace ( COMMA persisterSpace )*
+//TODO: Should handle here if the persisterSpace first element is a join.. it it is.. should be inside the last one.
 		-> ^(PERSISTER_SPACE persisterSpace)+
 	;
 
@@ -458,12 +469,16 @@ crossJoin
 	;
 
 qualifiedJoin
-@init {boolean isEntityReference = false;}
+@init	{ boolean isEntityReference = false; List entityNames = null; }
 	:	nonCrossJoinType join_key fetch_key? path aliasClause
-	(	on_key {isEntityReference = true;} logicalExpression 
+	(	on_key 
+	{	isEntityReference = true;
+		entityNames = extractEntityNames($path.text);
+		if (entityNames.size() > 1 && entitySplitStack.peek().equals(Boolean.FALSE)) { entitySplitStack.pop(); entitySplitStack.push(Boolean.TRUE); } 	} 
+		logicalExpression 
 	|	propertyFetch? withClause?
 	)
-	-> {isEntityReference}? ^(PERSISTER_JOIN[$join_key.start,"persister-join"] nonCrossJoinType ^(ENTITY_PERSISTER_REF ENTITY_NAME[$path.start, $path.text] aliasClause?) ^(on_key logicalExpression))
+	-> {isEntityReference}? ^(PERSISTER_JOIN[$join_key.start,"persister-join"] nonCrossJoinType ^(ENTITY_PERSISTER_REF ENTITY_NAME<EntityNameTree>[$path.start, $path.text, entityNames] aliasClause?) ^(on_key logicalExpression))
 	-> ^(PROPERTY_JOIN[$join_key.start, "property-join"] nonCrossJoinType fetch_key? aliasClause? propertyFetch? ^(PROPERTY_REFERENCE path) withClause?)
 	;
 
@@ -501,10 +516,11 @@ propertyFetch
 		-> PROP_FETCH[$fetch_key.start, "property-fetch"]
 	;
 
-hibernateLegacySyntax
-	:	aliasValue in_key
-	(	class_key entityName -> ^(ENTITY_PERSISTER_REF entityName aliasValue) 
-	|	collectionExpression -> ^(PROPERTY_JOIN INNER[$in_key.start, "inner"] aliasValue collectionExpression)
+hibernateLegacySyntax returns [boolean isPropertyJoin]
+@init {$isPropertyJoin = false;}
+	:	aliasDeclaration in_key
+	(	class_key entityName -> ^(ENTITY_PERSISTER_REF entityName aliasDeclaration) 
+	|	collectionExpression {$isPropertyJoin = true;} -> ^(PROPERTY_JOIN INNER[$in_key.start, "inner legacy"] aliasDeclaration collectionExpression)
 	)
 	;
 
@@ -533,19 +549,25 @@ explicitSelectItem
 	;
 
 selectExpression
+//TODO: PARAMETERS CAN'T BE USED -> This verification should be scoped
 	:	expression aliasClause
+		-> ^(SELECT_ITEM expression aliasClause?)
 	;
 
 aliasClause
 options{
     k=2;
 }	:
-	|	aliasValue
-	|	as_key! aliasValue
+	|	aliasDeclaration
+	|	as_key! aliasDeclaration
 	;
 
-aliasValue
+aliasDeclaration
 	:	IDENTIFIER -> ALIAS_NAME[$IDENTIFIER]
+	;
+
+aliasReference
+	:	IDENTIFIER -> ALIAS_REF[$IDENTIFIER] 
 	;
 
 rootDynamicInstantiation
@@ -568,7 +590,7 @@ dynamicInstantiationArg
 
 jpaSelectObjectSyntax
 	:	object_key LEFT_PAREN aliasReference RIGHT_PAREN
-		-> ^(SELECT_ITEM ^(object_key aliasReference)) 
+		-> ^(SELECT_ITEM aliasReference) 
 	;
 
 orderByClause
@@ -576,11 +598,14 @@ orderByClause
 	;
 
 sortSpecification
-	:	sortKey collationSpecification? orderingSpecification?
+@init{boolean generateOmmitedElement = true;}
+	:	sortKey collationSpecification? (orderingSpecification {generateOmmitedElement = false;})?
+		-> {generateOmmitedElement}? ^(SORT_SPEC sortKey collationSpecification? ASC)
 		-> ^(SORT_SPEC sortKey collationSpecification? orderingSpecification?)
 	;
 
 sortKey
+//TODO: PARAMETERS CAN'T BE USED -> This verification should be scoped
 	:	concatenation
 	;
 
@@ -649,9 +674,9 @@ relationalExpression
 		|	like_key concatenation likeEscape?
 			-> {isNegated}? ^(NOT_LIKE[$not_key.start, "not like"] $relationalExpression concatenation likeEscape?) 
 			-> ^(like_key $relationalExpression concatenation likeEscape?)
-		|	member_of_key propertyReference
-			-> {isNegated}? ^(NOT_IN[$not_key.start, "not in"] $relationalExpression ^(IN_LIST ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM propertyReference))))))
-			-> ^(IN[$member_of_key.start, "in"] $relationalExpression ^(IN_LIST ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM propertyReference))))))
+		|	member_of_key path
+			-> {isNegated}? ^(NOT_IN[$not_key.start, "not in"] $relationalExpression ^(IN_LIST ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM ^(GENERIC_ELEMENT path)))))))
+			-> ^(IN[$member_of_key.start, "in"] $relationalExpression ^(IN_LIST ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM ^(GENERIC_ELEMENT path)))))))
 		)
 	)?
 	;
@@ -737,7 +762,7 @@ searchedWhenClause
 
 quantifiedExpression
 	:	( some_key^ | exists_key^ | all_key^ | any_key^ ) 
-	(	aliasValue
+	(	aliasReference
 	|	collectionExpression
 	|	LEFT_PAREN! subQuery RIGHT_PAREN!
 	)
@@ -895,16 +920,18 @@ bitLengthFunction
 	;
 
 setFunction
+@init{boolean generateOmmitedElement = true;}
 	:	( sum_key^ | avg_key^ | max_key^ | min_key^ ) LEFT_PAREN! additiveExpression RIGHT_PAREN!
-	|	count_key LEFT_PAREN ( ASTERISK | ( ( distinct_key | all_key )? countFunctionArguments ) ) RIGHT_PAREN
+	|	count_key LEFT_PAREN ( ASTERISK {generateOmmitedElement = false;} | ( ( (distinct_key | all_key) {generateOmmitedElement = false;} )? countFunctionArguments ) ) RIGHT_PAREN
+		-> {generateOmmitedElement}? ^(count_key ASTERISK? ALL countFunctionArguments?)
 		-> ^(count_key ASTERISK? distinct_key? all_key? countFunctionArguments?)
 	;
 
 countFunctionArguments
 @init { int type = -1;}
 	:	path
-		-> {type == 1}? ^(ELEMENTS path)
-	    -> {type == 2}? ^(INDICES path)
+		-> {type == 1}? ^(ELEMENTS ^(PROPERTY_REFERENCE path))
+	    -> {type == 2}? ^(INDICES ^(PROPERTY_REFERENCE path))
 		-> ^(PROPERTY_REFERENCE path)
 	//TODO if ends with:
 	//  .elements or .indices -> it is a collectionExpression
@@ -936,10 +963,10 @@ atom
 	    //  if it is constantReference (using context)
 	    //  otherwise it will be a generic element to be resolved on the next phase (1st tree walker)
 	    -> {type == 0}? ^(DOT_CLASS identPrimary)
-	    -> {type == 1}? ^(ELEMENTS identPrimary)
-	    -> {type == 2}? ^(INDICES identPrimary)
+	    -> {type == 1}? ^(ELEMENTS ^(PROPERTY_REFERENCE identPrimary))
+	    -> {type == 2}? ^(INDICES ^(PROPERTY_REFERENCE identPrimary))
 	    -> {type == 3}? ^(GENERAL_FUNCTION_CALL identPrimary)
-	    -> {type == 4}? ^(JAVA_CONSTANT identPrimary)
+	    -> {type == 4}? ^(JAVA_CONSTANT identPrimary) //-> here will have 2 strutctures element and the constant
 	    -> ^(GENERIC_ELEMENT identPrimary)
 	|	constant
 	|	parameterSpecification
@@ -1000,13 +1027,15 @@ numeric_literal
 	|	FLOATING_POINT_LITERAL
 	;
 
-aliasReference
-	:	IDENTIFIER -> ALIAS_REF[$IDENTIFIER] 
-	;
-
 entityName
-	:	dotIdentifierPath -> ENTITY_NAME[$dotIdentifierPath.start, $dotIdentifierPath.text]
-	//TODO: semantic validation
+@init	{ List entityNames = null; }
+@after	{ if (entityNames.size() > 1 && entitySplitStack.peek().equals(Boolean.FALSE)) { entitySplitStack.pop(); entitySplitStack.push(Boolean.TRUE); } }
+	:	dotIdentifierPath
+	{	entityNames = extractEntityNames($dotIdentifierPath.text);	}
+	//here the polimorfic entities should be resolved... to:
+	   // 1. to place inside the ENTITY_NAME Token all its possible values, otherwise it would be much difficult to return to the place that should explit the sentence 
+	   // 2. enable exception geration when not supported (union, insert)
+		-> ENTITY_NAME<EntityNameTree>[$dotIdentifierPath.start, $dotIdentifierPath.text, entityNames]
 	;
 
 propertyReference
@@ -1048,7 +1077,6 @@ else_key
 
 object_key
 	:	{(validateIdentifierKey("object"))}?=>  id=IDENTIFIER
-        	->	OBJECT[$id]
 	;
 
 case_key

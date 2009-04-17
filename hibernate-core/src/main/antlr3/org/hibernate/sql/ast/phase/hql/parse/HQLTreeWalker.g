@@ -1,9 +1,15 @@
 tree grammar HQLTreeWalker;
 
 options{
+	output=AST;
+	rewrite=true;
 	tokenVocab=HQL;
 	ASTLabelType=CommonTree;
 	TokenLabelType=CommonToken;
+}
+
+tokens {
+	VERSIONED_VALUE;
 }
 
 @header {
@@ -47,34 +53,47 @@ filterStatement[String collectionRole]
 	;
 
 statement
-	:	updateStatement
-	|	deleteStatement
+	:	updateStatementSet
+	|	deleteStatementSet
 	|	insertStatement
-	|	queryStatement
+	|	queryStatementSet
+	;
+
+updateStatementSet
+	:	updateStatement+
 	;
 
 updateStatement
-	:	^(UPDATE VERSIONED? ENTITY_NAME ALIAS_NAME? ^(SET assignment+) whereClause?)
+@init {boolean hasVersioned = false; Object versionedPropertyDaya = null;} 
+	:	^(UPDATE (VERSIONED {hasVersioned = true;})? entityName ^(SET assignment+) whereClause?)
+	-> {hasVersioned}? ^(UPDATE entityName ^(SET assignment+ 
+			^(EQUALS ^(PROPERTY_REFERENCE IDENTIFIER["name"]) VERSIONED_VALUE)) whereClause?)
+	-> ^(UPDATE entityName ^(SET assignment+) whereClause?)
 	;
 
 assignment
-	:	^(EQUALS ^(ASSIGNMENT_FIELD dotIdentifierPath) valueExpression)
+	:	^(EQUALS propertyReference valueExpression)
+	;
+
+deleteStatementSet
+	:	deleteStatement+
 	;
 
 deleteStatement
-	:	^(DELETE ENTITY_NAME ALIAS_NAME? whereClause?)
+	:	^(DELETE entityName whereClause?)
 	;
 
+
 insertStatement
-	:	^(INSERT intoClause queryStatement)
+	:	^(INSERT intoClause queryStatementSet)
 	;
 
 intoClause
-	:	^(INTO ENTITY_NAME ^(INSERTABILITY_SPEC insertablePropertySpecification+ ) )
+	:	^(INTO entityName ^(INSERTABILITY_SPEC propertyReference+ ) )
 	;
 
-insertablePropertySpecification
-	:	^(INSERTABLE_PROPERTY dotIdentifierPath)
+queryStatementSet
+	:	queryStatement+
 	;
 
 queryStatement
@@ -82,7 +101,7 @@ queryStatement
 	;
 
 queryExpression
-	:	^(UNION queryExpression queryExpression)
+	:	^(UNION ALL? queryExpression queryExpression)
 	|	^(INTERSECT ALL? queryExpression queryExpression)
 	|	^(EXCEPT ALL? queryExpression queryExpression)
 	|	querySpec	
@@ -117,9 +136,8 @@ fromClause
 	;
 
 persisterSpaces
-	:	propertyReference
+	:	^(PERSISTER_SPACE persisterSpace)
 	|	^(GENERIC_ELEMENT identPrimary)
-	|	^(PERSISTER_SPACE persisterSpace)
 	;
 
 persisterSpace
@@ -146,8 +164,8 @@ joinType
 	;
 
 persisterSpaceRoot
-	:	^(ENTITY_PERSISTER_REF ENTITY_NAME ALIAS_NAME? PROP_FETCH?)
-	|	joins
+	:	^(ENTITY_PERSISTER_REF entityName PROP_FETCH?)
+	//|	joins // this is created based on legacy syntax... check if we can move this from here 
 	;
 
 selectClause
@@ -155,14 +173,11 @@ selectClause
 	;
 
 rootSelectExpression
-	:	^(SELECT_ITEM ^(DYNAMIC_INSTANTIATION dynamicInstantiationArg+))
-	|	^(SELECT_ITEM ^(OBJECT ALIAS_REF))
-	|	^(SELECT_LIST rootSelectExpression+)
+	:	^(SELECT_LIST rootSelectExpression+)
+	|	^(SELECT_ITEM rootSelectExpression)
+	|	^(DYNAMIC_INSTANTIATION rootSelectExpression+)
+	|	^(DYNAMIC_INSTANTIATION_ARG rootSelectExpression)
 	|	valueExpression ALIAS_NAME?
-	;
-
-dynamicInstantiationArg
-	:	^(DYNAMIC_INSTANTIATION_ARG rootSelectExpression)
 	;
 
 orderByClause
@@ -170,7 +185,7 @@ orderByClause
 	;
 
 sortSpecification
-	:	^(SORT_SPEC valueExpression COLLATE? (ASC|DESC)?)
+	:	^(SORT_SPEC valueExpression COLLATE? (ASC|DESC))
 	;
 
 searchCondition
@@ -195,7 +210,6 @@ predicate
 	|	^( NOT_BETWEEN rowValueConstructor betweenList )
 	|	^( IN rowValueConstructor inPredicateValue )
 	|	^( NOT_IN rowValueConstructor inPredicateValue )
-	|	^( EXISTS (rowValueConstructor|ALIAS_NAME))
 	|	rowValueConstructor
 	;
 
@@ -239,64 +253,52 @@ valueExpression
 	|	^( MINUS valueExpression valueExpression )
 	|	^( ASTERISK numericValueExpression numericValueExpression )
 	|	^( SOLIDUS numericValueExpression numericValueExpression )
-	|	^( VECTOR_EXPR valueExpression+)
-    |	^( SOME (valueExpression|ALIAS_NAME) )
-    |	^( ALL (valueExpression|ALIAS_NAME) )
-    |	^( ANY (valueExpression|ALIAS_NAME) )
+	|	^( EXISTS rowValueConstructor)
+    |	^( SOME valueExpression )
+    |	^( ALL valueExpression )
+    |	^( ANY valueExpression )
+	|	^( VECTOR_EXPR valueExpression+) // or a tuples or ^(AND or IN statement 
 	|	valueExpressionPrimary
 	;
 
 valueExpressionPrimary
-	:	ALIAS_REF
-	|	caseExpression
+	:	caseExpression
 	|	function
 	|	collectionFunction
 	|	collectionExpression
 	|	constant
 	|	parameter
 	|	propertyReference
+	|	queryStatementSet
+	|	ALIAS_REF //ID COLUMN, full property column list 
+	|	^(DOT_CLASS identPrimary) // crazy 
+	|	^(GENERAL_FUNCTION_CALL identPrimary)
+	|	^(JAVA_CONSTANT identPrimary) //It will generate at SQL a parameter element (?) -> 'cos we do not need to care about char escaping
 	|	^(GENERIC_ELEMENT identPrimary)
-	|	queryStatement
 	;
 
 caseExpression
-	:	caseAbbreviation
-	|	caseSpecification
-	;
-
-
-caseAbbreviation
 	:	^(NULLIF valueExpression valueExpression)
 	|	^(COALESCE valueExpression valueExpression*)
-	;
-
-caseSpecification
-	:	simpleCase
-	|	searchedCase
-	;
-
-simpleCase
-	:	^(SIMPLE_CASE valueExpression simpleCaseWhenClause+ elseClause?)
+	|	^(SIMPLE_CASE valueExpression simpleCaseWhenClause+ elseClause?)
+	|	^(SEARCHED_CASE searchedWhenClause+ elseClause?)
 	;
 
 simpleCaseWhenClause
 	:	^(WHEN valueExpression valueExpression)
 	;
 
-elseClause
-	:	^(ELSE valueExpression)
-	;
-
-searchedCase
-	:	^(SEARCHED_CASE searchedWhenClause+ elseClause?)
-	;
-
 searchedWhenClause
 	:	^(WHEN searchCondition valueExpression)
 	;
 
+elseClause
+	:	^(ELSE valueExpression)
+	;
+
 function
-	:	( standardFunction | setFunction )
+	:	standardFunction
+	|	setFunction
 	;
 
 standardFunction
@@ -435,7 +437,7 @@ setFunction
 	|	^(AVG numericValueExpression)
 	|	^(MAX numericValueExpression)
 	|	^(MIN numericValueExpression)
-	|	^(COUNT (ASTERISK | (DISTINCT|ALL)? countFunctionArguments))
+	|	^(COUNT (ASTERISK | (DISTINCT|ALL) countFunctionArguments))
 	;
 
 countFunctionArguments
@@ -446,6 +448,7 @@ countFunctionArguments
 
 collectionFunction
 	:	^((MAXELEMENT|MAXINDEX|MINELEMENT|MININDEX) collectionPropertyReference)
+		//it will generate a SELECT MAX (m.column) form Table xxx -> it is realted to Hibernate mappings to Table->Map
 	;
 
 collectionPropertyReference
@@ -453,14 +456,14 @@ collectionPropertyReference
 	;
 
 collectionExpression
-	:	^(ELEMENTS propertyReference)
+	:	^(ELEMENTS propertyReference) //it will generate a SELECT m.column form Table xxx -> it is realted to Hibernate mappings to Table->Map
 	|	^(INDICES propertyReference)
 	;
 
 parameter
 	:	NAMED_PARAM
 	|	JPA_PARAM
-	|	PARAM	
+	|	PARAM
 	;
 
 constant
@@ -484,8 +487,12 @@ numeric_literal
 	|	FLOATING_POINT_LITERAL
 	;
 
+entityName
+	:	ENTITY_NAME ALIAS_NAME?
+	;
+
 propertyReference
-	:	^(PROPERTY_REFERENCE path)
+	:	^(PROPERTY_REFERENCE identPrimary)
 	;
 
 identPrimary
@@ -493,15 +500,4 @@ identPrimary
 	|	^(DOT identPrimary identPrimary )
 	|	^(LEFT_SQUARE identPrimary valueExpression* )
 	|	^(LEFT_PAREN identPrimary valueExpression* )
-	;
-
-dotIdentifierPath
-	:	IDENTIFIER
-	|	^(DOT dotIdentifierPath dotIdentifierPath) 
-	;
-
-path
-	:	IDENTIFIER
-	|	^( DOT path path )
-	|	^(LEFT_SQUARE path valueExpression* )
 	;
