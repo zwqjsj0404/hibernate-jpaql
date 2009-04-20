@@ -1,4 +1,4 @@
-package org.hibernate.sql.ast.phase.hql.parse;
+package org.hibernate.sql.ast.tree;
 
 import java.util.List;
 
