@@ -30,11 +30,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.hibernate.HibernateException;
-import org.hibernate.sql.ast.util.ASTPrinter;
+import org.hibernate.sql.ast.util.TreePrinter;
 import org.antlr.runtime.CharStream;
 import org.antlr.runtime.TokenStream;
 import org.antlr.runtime.ANTLRStringStream;
 import org.antlr.runtime.CommonTokenStream;
+import org.antlr.runtime.tree.Tree;
 
 /**
  * A translator which coordinates translation of an <tt>order-by</tt> mapping.
@@ -61,7 +62,12 @@ public class OrderByFragmentTranslator {
 		OrderByParserLexer lexer = new OrderByParserLexer( new ANTLRStringStream( fragment ) );
 		OrderByFragmentParser parser = new OrderByFragmentParser( new CommonTokenStream( lexer ), context );
 		try {
-			parser.orderByFragment();
+            Tree tree = ( Tree ) parser.orderByFragment().getTree();
+
+            if ( log.isTraceEnabled() ) {
+                TreePrinter printer = new TreePrinter( OrderByParserParser.class );
+                log.trace( printer.renderAsString( tree, "--- {order-by fragment} ---" ) );
+            }
 		}
 		catch ( HibernateException e ) {
 			throw e;
@@ -70,11 +76,6 @@ public class OrderByFragmentTranslator {
 			throw new HibernateException( "Unable to parse order-by fragment", t );
 		}
 
-//		if ( log.isTraceEnabled() ) {
-//			ASTPrinter printer = new ASTPrinter( OrderByParserParser.class );
-//			log.trace( printer.showAsString( parser..getAST(), "--- {order-by fragment} ---" ) );
-//		}
-//
 //		OrderByFragmentRenderer renderer = new OrderByFragmentRenderer();
 //		try {
 //			renderer.orderByFragment( parser.getAST() );

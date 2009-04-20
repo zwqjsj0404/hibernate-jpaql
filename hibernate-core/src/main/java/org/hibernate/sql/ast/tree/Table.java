@@ -38,6 +38,7 @@ import org.antlr.runtime.Token;
 import org.hibernate.type.Type;
 import org.hibernate.sql.ast.alias.ImplicitAliasGenerator;
 import org.hibernate.sql.ast.common.HibernateTree;
+import org.hibernate.sql.ast.common.HibernateToken;
 import org.hibernate.sql.ast.util.DisplayableNode;
 import org.hibernate.sql.ast.phase.hql.parse.HQLParser;
 import org.hibernate.persister.entity.Queryable;
@@ -60,6 +61,10 @@ public class Table extends HibernateTree implements DisplayableNode {
 
 	public Table(HibernateTree node, TableSpace tableSpace) {
 		this( node.getToken(), tableSpace );
+	}
+
+	public Table(int tokenType, TableSpace tableSpace) {
+		this( new HibernateToken( tokenType ), tableSpace );
 	}
 
 	public TableSpace getTableSpace() {

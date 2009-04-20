@@ -31,6 +31,9 @@ import antlr.collections.AST;
  * @author Steve Ebersole
  */
 public class NodeTraverser {
+
+    // todo : look at org.antlr.runtime.tree.TreeVisitor/TreeVsitorAction
+
 	public static interface VisitationStrategy {
 		public void visit(AST node);
 	}

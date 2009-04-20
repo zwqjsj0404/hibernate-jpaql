@@ -61,6 +61,10 @@ public class HibernateTree extends CommonTree {
 		this( new HibernateToken( type, text ) );
 	}
 
+	public HibernateTree(int type) {
+		this( new HibernateToken( type ) );
+	}
+
 	public Tree dupNode() {
 		return new HibernateTree( this );
 	}

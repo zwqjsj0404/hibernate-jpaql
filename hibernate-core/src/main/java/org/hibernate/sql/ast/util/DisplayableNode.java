@@ -24,7 +24,7 @@
 package org.hibernate.sql.ast.util;
 
 /**
- * Contract for {@link org.hibernate.sql.ast.common.Node} implementations which wish to return customized display information
+ * Contract for {@link org.hibernate.sql.ast.common.HibernateToken} implementations which wish to return customized display information
  * about themselves.
  *
  * @author Steve Ebersole
