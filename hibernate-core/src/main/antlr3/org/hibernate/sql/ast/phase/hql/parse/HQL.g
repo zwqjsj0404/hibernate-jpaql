@@ -5,6 +5,10 @@ options {
 }
 
 tokens {
+//GENERIC SQL TOKENS
+	TABLE;
+	COLUMN;
+
 //VIRTUAL TOKENS
 	ALIAS_NAME;
 	ALIAS_REF;
@@ -18,7 +22,6 @@ tokens {
 	ENTITY_PERSISTER_REF;
 	FILTER;
 	GENERAL_FUNCTION_CALL;
-	GENERIC_ELEMENT;
 	GROUPING_VALUE;
 	IN_LIST;
 	INSERTABILITY_SPEC;
@@ -31,6 +34,7 @@ tokens {
 	NOT_BETWEEN;
 	NOT_IN;
 	NOT_LIKE;
+	PATH;
 	PERSISTER_JOIN;
 	PERSISTER_SPACE;
 	PROP_FETCH;
@@ -45,9 +49,11 @@ tokens {
 	SELECT_LIST;
 	SIMPLE_CASE;
 	SORT_SPEC;
+	SUB_QUERY;
 	UNARY_MINUS;
 	UNARY_PLUS;
 	VECTOR_EXPR;
+	VERSIONED_VALUE;
 
 //SOFT KEYWORDS
 	ABS;
@@ -182,6 +188,7 @@ package org.hibernate.sql.ast.phase.hql.parse;
 import java.util.LinkedList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Iterator;
 }
 
 @lexer::header {
@@ -237,10 +244,13 @@ package org.hibernate.sql.ast.phase.hql.parse;
 }
 
 @parser::members {
-	Stack entitySplitStack = new Stack();
-	ParserContext context = new ParserContextDefaultImpl();
-
+	private Stack enableParameterUsage = new Stack();
+	private ParserContext context = new ParserContextDefaultImpl();
     private List errorMessages = new LinkedList();
+
+	public void setParserContext(ParserContext context){
+		this.context = context;
+	}
 
 	private boolean validateIdentifierKey(String text) {
 		return validateLT(1, text);
@@ -338,9 +348,83 @@ package org.hibernate.sql.ast.phase.hql.parse;
     	}
     	return implementors;
     }
+    
+	private Object generatePersisterSpacesTree(List persistenceSpaces) {
+	    List persisterSpaceList = new ArrayList();
+	    for (Iterator iterator = persistenceSpaces.iterator(); iterator
+				.hasNext();) {
+			Tree persistenceSpaceData = (Tree) iterator.next();
+			if (persistenceSpaceData.getType() == PERSISTER_JOIN || persistenceSpaceData.getType() == PROPERTY_JOIN){
+				adaptor.addChild(persisterSpaceList.get(persisterSpaceList.size() - 1), persistenceSpaceData);
+			} else {
+			    Object persistenceSpaceTree = (Object)adaptor.nil();
+			    persistenceSpaceTree = adaptor.becomeRoot((Object)adaptor.create(PERSISTER_SPACE, "PERSISTER_SPACE"), persistenceSpaceTree);
+			    adaptor.addChild(persistenceSpaceTree, persistenceSpaceData);
+			    persisterSpaceList.add(persistenceSpaceTree);
+			}
+		}
+	    Tree resultTree = (Tree) adaptor.nil();
+	    for (Iterator iterator = persisterSpaceList.iterator(); iterator
+				.hasNext();) {
+			Object persistenceElement = (Object) iterator.next();
+			adaptor.addChild(resultTree, persistenceElement);
+		}
+
+		return resultTree;
+	}
+	
+    private Object generateUpdateStatementTree(Object updateKey, Object entityName,
+			Object aliasClause, Object setClause, Object whereClause) {
+		Object result = (Object)adaptor.nil();
+    	EntityNameTree entityNameTree = (EntityNameTree) entityName;
+    	for (int i = 0; i < entityNameTree.getEntityCount(); i++) {
+    		Object root_1 = (Object)adaptor.nil();
+    		root_1 = (Object)adaptor.becomeRoot(new CommonTree((CommonTree)updateKey), root_1);
+
+    		adaptor.addChild(root_1, new EntityNameTree(entityNameTree, entityNameTree.getEntityName(i)));
+
+    		if ( aliasClause != null ) {
+    		    adaptor.addChild(root_1, aliasClause);
+    		}
+    		adaptor.addChild(root_1, setClause);
+
+    		if ( whereClause != null ) {
+    		    adaptor.addChild(root_1, whereClause);
+    		}
+
+    		adaptor.addChild(result, root_1);
+		}
+		return result;
+	}
+	
+	private Object generateDeleteStatementTree(Object deleteKey, Object entityName,
+			Object aliasClause, Object whereClause) {
+		Object result = (Object)adaptor.nil();
+    	EntityNameTree entityNameTree = (EntityNameTree) entityName;
+    	for (int i = 0; i < entityNameTree.getEntityCount(); i++) {
+    		Object root_1 = (Object)adaptor.nil();
+    		root_1 = (Object)adaptor.becomeRoot(new CommonTree((CommonTree)deleteKey), root_1);
+
+    		adaptor.addChild(root_1, new EntityNameTree(entityNameTree, entityNameTree.getEntityName(i)));
+
+    		if ( aliasClause != null ) {
+    		    adaptor.addChild(root_1, aliasClause);
+    		}
+
+    		if ( whereClause != null ) {
+    		    adaptor.addChild(root_1, whereClause);
+    		}
+
+    		adaptor.addChild(result, root_1);
+		}
+		return result;
+	}
+	
 }
 
 filterStatement[String collectionRole]
+@init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.TRUE); }
+@after	{ enableParameterUsage.pop(); }
 	:	selectClause? from_key? whereClause? ( groupByClause havingClause?)? orderByClause?
 		-> ^(QUERY ^(QUERY_SPEC["filter-query-spec"] FILTER[$collectionRole] 
 				selectClause? from_key? whereClause? ( groupByClause havingClause?)? orderByClause?))
@@ -348,6 +432,8 @@ filterStatement[String collectionRole]
 	;
 
 statement
+@init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.TRUE); }
+@after	{ enableParameterUsage.pop(); }
 	:	updateStatement
 	|	deleteStatement
 	|	insertStatement
@@ -355,14 +441,19 @@ statement
 	;
 
 updateStatement
-@init	{	if (state.backtracking == 0) entitySplitStack.push(Boolean.FALSE);	}
-@after	{	entitySplitStack.pop();	}
-	:	udpate_key^
-		versioned_key? from_key!? entityName aliasClause setClause whereClause?
+scope{
+	boolean generateVersionedField;
+}
+	:	udpate_key
+		(versioned_key {$updateStatement::generateVersionedField = true;})? 
+			from_key? entityName aliasClause setClause whereClause?
+		-> {	generateUpdateStatementTree($udpate_key.tree, $entityName.tree, $aliasClause.tree, $setClause.tree, $whereClause.tree )	}
 	;
 
 setClause
-	:	set_key^ assignment (COMMA! assignment)*
+	:	set_key assignment (COMMA assignment)*
+		-> {$updateStatement::generateVersionedField}? ^(set_key assignment+ ^(EQUALS VERSIONED_VALUE STRING_LITERAL))
+		-> ^(set_key assignment+)
 	;
 
 assignment
@@ -374,14 +465,11 @@ assignmentField
 	;
 
 deleteStatement
-@init	{	if (state.backtracking == 0) entitySplitStack.push(Boolean.FALSE);	}
-@after	{	entitySplitStack.pop();	}
-	:	delete_key^ from_key!? entityName aliasClause whereClause?
+	:	delete_key from_key? entityName aliasClause whereClause?
+		-> {	generateDeleteStatementTree($delete_key.tree, $entityName.tree, $aliasClause.tree, $whereClause.tree )	}
 	;
 
 insertStatement
-@init	{	if (state.backtracking == 0) entitySplitStack.push(Boolean.FALSE);	}
-@after	{	entitySplitStack.pop();	}
 	:	insert_key^ 
 		intoClause selectStatement
 	;
@@ -407,8 +495,6 @@ selectStatement
 
 //Think about the exception generation where Polimorfic queris are used inside a Mix of results (union, intersect and except) 
 queryExpression
-@init	{	if (state.backtracking == 0) entitySplitStack.push(Boolean.FALSE);	}
-@after	{	entitySplitStack.pop();	}
 	:	querySpec ( ( union_key^ | intersect_key^ | except_key^ ) all_key? querySpec )*
 	;
 
@@ -444,8 +530,10 @@ selectFrom
 	;
 
 subQuery
+@init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.TRUE); }
+@after	{ enableParameterUsage.pop(); }
 	:	queryExpression
-		-> ^(QUERY queryExpression)
+		-> ^(SUB_QUERY ^(QUERY queryExpression))
 	;
 
 fromClause
@@ -454,9 +542,8 @@ fromClause
 	;
 
 persisterSpaces
-	:	persisterSpace ( COMMA persisterSpace )*
-//TODO: Should handle here if the persisterSpace first element is a join.. it it is.. should be inside the last one.
-		-> ^(PERSISTER_SPACE persisterSpace)+
+	:	ps+=persisterSpace ( COMMA ps+=persisterSpace )*
+		-> {generatePersisterSpacesTree($ps)}
 	;
 
 persisterSpace
@@ -473,8 +560,7 @@ qualifiedJoin
 	:	nonCrossJoinType join_key fetch_key? path aliasClause
 	(	on_key 
 	{	isEntityReference = true;
-		entityNames = extractEntityNames($path.text);
-		if (entityNames.size() > 1 && entitySplitStack.peek().equals(Boolean.FALSE)) { entitySplitStack.pop(); entitySplitStack.push(Boolean.TRUE); } 	} 
+		entityNames = extractEntityNames($path.text);	} 
 		logicalExpression 
 	|	propertyFetch? withClause?
 	)
@@ -549,7 +635,9 @@ explicitSelectItem
 	;
 
 selectExpression
-//TODO: PARAMETERS CAN'T BE USED -> This verification should be scoped
+@init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.FALSE); }
+@after	{ enableParameterUsage.pop(); }
+//PARAMETERS CAN'T BE USED -> This verification should be scoped
 	:	expression aliasClause
 		-> ^(SELECT_ITEM expression aliasClause?)
 	;
@@ -605,7 +693,9 @@ sortSpecification
 	;
 
 sortKey
-//TODO: PARAMETERS CAN'T BE USED -> This verification should be scoped
+@init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.FALSE); }
+@after	{ enableParameterUsage.pop(); }
+//PARAMETERS CAN'T BE USED -> This verification should be scoped
 	:	concatenation
 	;
 
@@ -650,8 +740,8 @@ equalityExpression
 	(	is_key (not_key {isNegated = true;})? (NULL {isNull = true;}|empty_key)
 		-> {isNull && isNegated}? ^(IS_NOT_NULL[$not_key.start, "is not null"] $equalityExpression)
 		-> {isNull && !isNegated}? ^(IS_NULL[$NULL, "is null"] $equalityExpression)
-		-> {!isNull && isNegated}? ^(NOT ^(EXISTS ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM $equalityExpression))))))
-		-> ^(EXISTS ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM $equalityExpression)))))
+		-> {!isNull && isNegated}? ^(NOT ^(EXISTS ^(SUB_QUERY ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM $equalityExpression)))))))
+		-> ^(EXISTS ^(SUB_QUERY ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM $equalityExpression))))))
 	|	( op=EQUALS | op=NOT_EQUAL ) relationalExpression
 		-> ^($op $equalityExpression relationalExpression)
 	)*
@@ -675,8 +765,8 @@ relationalExpression
 			-> {isNegated}? ^(NOT_LIKE[$not_key.start, "not like"] $relationalExpression concatenation likeEscape?) 
 			-> ^(like_key $relationalExpression concatenation likeEscape?)
 		|	member_of_key path
-			-> {isNegated}? ^(NOT_IN[$not_key.start, "not in"] $relationalExpression ^(IN_LIST ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM ^(GENERIC_ELEMENT path)))))))
-			-> ^(IN[$member_of_key.start, "in"] $relationalExpression ^(IN_LIST ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM ^(GENERIC_ELEMENT path)))))))
+			-> {isNegated}? ^(NOT_IN[$not_key.start, "not in"] $relationalExpression ^(IN_LIST ^(SUB_QUERY ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM ^(PATH path))))))))
+			-> ^(IN[$member_of_key.start, "in"] $relationalExpression ^(IN_LIST ^(SUB_QUERY ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM ^(PATH path))))))))
 		)
 	)?
 	;
@@ -698,15 +788,15 @@ betweenList
 	;
 
 concatenation
-	:	additiveExpression (DOUBLE_PIPE^ additiveExpression)*
+	:	additiveExpression (DOUBLE_PIPE^ {enableParameterUsage.push(Boolean.TRUE);} additiveExpression { enableParameterUsage.pop(); })*
 	;
 
 additiveExpression
-	:	multiplyExpression ( ( PLUS^ | MINUS^ ) multiplyExpression )*
+	:	multiplyExpression ( ( PLUS^ | MINUS^ ) {enableParameterUsage.push(Boolean.TRUE);} multiplyExpression { enableParameterUsage.pop(); })*
 	;
 
 multiplyExpression
-	:	unaryExpression ( ( ASTERISK^ | SOLIDUS^ ) unaryExpression )*
+	:	unaryExpression ( ( ASTERISK^ | SOLIDUS^ ) {enableParameterUsage.push(Boolean.TRUE);} unaryExpression { enableParameterUsage.pop(); })*
 	;
 
 unaryExpression
@@ -722,6 +812,8 @@ unaryExpression
 	;
 
 caseExpression
+@init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.TRUE); }
+@after	{ enableParameterUsage.pop(); }
 	:	caseAbbreviation
 	|	caseSpecification
 	;
@@ -769,6 +861,8 @@ quantifiedExpression
 	;
 
 standardFunction
+@init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.TRUE); }
+@after	{ enableParameterUsage.pop(); }
 	:	castFunction
 	|	concatFunction
 	|	substringFunction
@@ -920,7 +1014,8 @@ bitLengthFunction
 	;
 
 setFunction
-@init{boolean generateOmmitedElement = true;}
+@init	{ boolean generateOmmitedElement = true; if (state.backtracking == 0) enableParameterUsage.push(Boolean.TRUE); }
+@after	{ enableParameterUsage.pop(); }
 	:	( sum_key^ | avg_key^ | max_key^ | min_key^ ) LEFT_PAREN! additiveExpression RIGHT_PAREN!
 	|	count_key LEFT_PAREN ( ASTERISK {generateOmmitedElement = false;} | ( ( (distinct_key | all_key) {generateOmmitedElement = false;} )? countFunctionArguments ) ) RIGHT_PAREN
 		-> {generateOmmitedElement}? ^(count_key ASTERISK? ALL countFunctionArguments?)
@@ -941,6 +1036,8 @@ countFunctionArguments
 	;
 
 collectionFunction
+@init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.TRUE); }
+@after	{ enableParameterUsage.pop(); }
 	:	( maxelement_key^ | maxindex_key^ | minelement_key^ | minindex_key^ ) LEFT_PAREN! propertyReference RIGHT_PAREN!
 	;
 
@@ -967,10 +1064,10 @@ atom
 	    -> {type == 2}? ^(INDICES ^(PROPERTY_REFERENCE identPrimary))
 	    -> {type == 3}? ^(GENERAL_FUNCTION_CALL identPrimary)
 	    -> {type == 4}? ^(JAVA_CONSTANT identPrimary) //-> here will have 2 strutctures element and the constant
-	    -> ^(GENERIC_ELEMENT identPrimary)
+	    -> ^(PATH identPrimary)
 	|	constant
-	|	parameterSpecification
-	//TODO: validate using Scopes if it is enabled or not to use parameterSpecification.. if not generate an exception 
+	|	parameterSpecification { if (enableParameterUsage.peek().equals(Boolean.FALSE)) throw new RecognitionException( ); }
+	//validate using Scopes if it is enabled or not to use parameterSpecification.. if not generate an exception 
 	|	LEFT_PAREN! (expressionOrVector | subQuery) RIGHT_PAREN!
 	;
 
@@ -990,6 +1087,8 @@ expressionOrVector
 	;
 
 vectorExpr
+@init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.TRUE); }
+@after	{ enableParameterUsage.pop(); }
 	:	COMMA! expression (COMMA! expression)*
 	;
 
@@ -1003,6 +1102,8 @@ identPrimary
 	;
 
 exprList
+@init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.TRUE); }
+@after	{ enableParameterUsage.pop(); }
 	:	expression? (COMMA! expression)*
 	;
 
@@ -1029,7 +1130,6 @@ numeric_literal
 
 entityName
 @init	{ List entityNames = null; }
-@after	{ if (entityNames.size() > 1 && entitySplitStack.peek().equals(Boolean.FALSE)) { entitySplitStack.pop(); entitySplitStack.push(Boolean.TRUE); } }
 	:	dotIdentifierPath
 	{	entityNames = extractEntityNames($dotIdentifierPath.text);	}
 	//here the polimorfic entities should be resolved... to:

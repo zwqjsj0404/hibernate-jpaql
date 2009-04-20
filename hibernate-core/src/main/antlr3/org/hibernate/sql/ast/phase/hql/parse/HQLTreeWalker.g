@@ -8,10 +8,6 @@ options{
 	TokenLabelType=CommonToken;
 }
 
-tokens {
-	VERSIONED_VALUE;
-}
-
 @header {
 /*
  * Hibernate, Relational Persistence for Idiomatic Java
@@ -43,8 +39,6 @@ tokens {
  * entirety.
  */
 package org.hibernate.sql.ast.phase.hql.parse;
-
-import java.util.LinkedList;
 }
 
 filterStatement[String collectionRole]
@@ -55,7 +49,7 @@ filterStatement[String collectionRole]
 statement
 	:	updateStatementSet
 	|	deleteStatementSet
-	|	insertStatement
+	|	insertStatementSet
 	|	queryStatementSet
 	;
 
@@ -64,15 +58,12 @@ updateStatementSet
 	;
 
 updateStatement
-@init {boolean hasVersioned = false; Object versionedPropertyDaya = null;} 
-	:	^(UPDATE (VERSIONED {hasVersioned = true;})? entityName ^(SET assignment+) whereClause?)
-	-> {hasVersioned}? ^(UPDATE entityName ^(SET assignment+ 
-			^(EQUALS ^(PROPERTY_REFERENCE IDENTIFIER["name"]) VERSIONED_VALUE)) whereClause?)
-	-> ^(UPDATE entityName ^(SET assignment+) whereClause?)
+	:	^(UPDATE entityName ^(SET assignment+) whereClause?)
 	;
 
 assignment
 	:	^(EQUALS propertyReference valueExpression)
+	|	^(EQUALS VERSIONED_VALUE STRING_LITERAL)
 	;
 
 deleteStatementSet
@@ -83,6 +74,9 @@ deleteStatement
 	:	^(DELETE entityName whereClause?)
 	;
 
+insertStatementSet
+	:	insertStatement+
+	;
 
 insertStatement
 	:	^(INSERT intoClause queryStatementSet)
@@ -137,7 +131,7 @@ fromClause
 
 persisterSpaces
 	:	^(PERSISTER_SPACE persisterSpace)
-	|	^(GENERIC_ELEMENT identPrimary)
+	|	^(PATH identPrimary)
 	;
 
 persisterSpace
@@ -165,7 +159,6 @@ joinType
 
 persisterSpaceRoot
 	:	^(ENTITY_PERSISTER_REF entityName PROP_FETCH?)
-	//|	joins // this is created based on legacy syntax... check if we can move this from here 
 	;
 
 selectClause
@@ -269,12 +262,12 @@ valueExpressionPrimary
 	|	constant
 	|	parameter
 	|	propertyReference
-	|	queryStatementSet
+	|	^(SUB_QUERY queryStatementSet)
 	|	ALIAS_REF //ID COLUMN, full property column list 
 	|	^(DOT_CLASS identPrimary) // crazy 
 	|	^(GENERAL_FUNCTION_CALL identPrimary)
 	|	^(JAVA_CONSTANT identPrimary) //It will generate at SQL a parameter element (?) -> 'cos we do not need to care about char escaping
-	|	^(GENERIC_ELEMENT identPrimary)
+	|	^(PATH identPrimary)
 	;
 
 caseExpression
