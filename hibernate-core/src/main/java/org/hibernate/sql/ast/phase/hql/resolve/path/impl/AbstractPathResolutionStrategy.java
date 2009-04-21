@@ -457,6 +457,18 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 		}
 	}
 
+	protected Table createJoin(PersisterSpace lhs, String propertyName, String alias) {
+		validateJoinable( lhs, propertyName );
+		Type propertyType = lhs.getPropertyType( propertyName );
+		if ( propertyType.isEntityType() ) {
+			return createJoin( lhs, resolveEntityPersister( lhs, propertyName ), alias );
+		}
+		else {
+			// assume collection because of validation of being joinable...
+			return createJoin( lhs, resolveCollectionPersister( lhs, propertyName ), alias, null );
+		}
+	}
+
 	protected Table createJoin(PersisterSpace lhs, Queryable entityPersister, String alias) {
 		EntityType entityType = entityPersister.getEntityMetamodel().getEntityType();
 
@@ -552,6 +564,16 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 		on.addChild( joinCondition );
 
 		return collectionTableExpression;
+	}
+
+	protected void validateJoinable(PersisterSpace lhs, String propertyName) {
+		if ( ! isAssociation( lhs.getPropertyType( propertyName ) ) ) {
+			throw new InvalidPropertyJoinException( getPathThusFar(), lhs.getName(), propertyName );
+		}
+	}
+
+	protected boolean isAssociation(Type propertyType) {
+		return propertyType.isAssociationType();
 	}
 
 	protected void validateCollectionReference(PersisterSpace lhs, String propertyName) {

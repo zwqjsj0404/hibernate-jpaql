@@ -180,6 +180,10 @@ public class Table extends HibernateTree implements DisplayableNode {
 		public void registerReusablePropertyJoinedTable(String propertyName, Table table) {
 			propertyToJoinedTableMap.put( propertyName, table );
 		}
+
+		public boolean contansProperty(String propertyName) {
+			return getPropertyType( propertyName ) != null;
+		}
 	}
 
 	public static class EntityTableSpace extends AbstractTableSpace {
