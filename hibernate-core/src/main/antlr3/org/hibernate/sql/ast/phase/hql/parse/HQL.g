@@ -35,6 +35,7 @@ tokens {
 	NOT_BETWEEN;
 	NOT_IN;
 	NOT_LIKE;
+	NOT_MEMBER_OF;
 	PATH;
 	PERSISTER_JOIN;
 	PERSISTER_SPACE;
@@ -776,8 +777,8 @@ equalityExpression
 	(	is_key (not_key {isNegated = true;})? (NULL {isNull = true;}|empty_key)
 		-> {isNull && isNegated}? ^(IS_NOT_NULL[$not_key.start, "is not null"] $equalityExpression)
 		-> {isNull && !isNegated}? ^(IS_NULL[$NULL, "is null"] $equalityExpression)
-		-> {!isNull && isNegated}? ^(NOT ^(EXISTS ^(SUB_QUERY ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM $equalityExpression)))))))
-		-> ^(EXISTS ^(SUB_QUERY ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM $equalityExpression))))))
+		-> {!isNull && isNegated}? ^(IS_NOT_EMPTY $equalityExpression)
+		-> ^(IS_EMPTY $equalityExpression)
 	|	( op=EQUALS | op=NOT_EQUAL ) relationalExpression
 		-> ^($op $equalityExpression relationalExpression)
 	)*
@@ -801,8 +802,8 @@ relationalExpression
 			-> {isNegated}? ^(NOT_LIKE[$not_key.start, "not like"] $relationalExpression concatenation likeEscape?) 
 			-> ^(like_key $relationalExpression concatenation likeEscape?)
 		|	member_of_key path
-			-> {isNegated}? ^(NOT_IN[$not_key.start, "not in"] $relationalExpression ^(IN_LIST ^(SUB_QUERY ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM ^(PATH path))))))))
-			-> ^(IN[$member_of_key.start, "in"] $relationalExpression ^(IN_LIST ^(SUB_QUERY ^(QUERY ^(QUERY_SPEC ^(SELECT_FROM ^(FROM ^(PATH path))))))))
+			-> {isNegated}? ^(NOT_MEMBER_OF[$not_key.start, "not member of"] $relationalExpression ^(PATH path))
+			-> ^(member_of_key $relationalExpression ^(PATH path))
 		)
 	)?
 	;

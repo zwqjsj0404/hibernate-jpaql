@@ -122,7 +122,7 @@ havingClause
 	;
 
 selectFrom
-	:	^(SELECT_FROM fromClause selectClause?)
+	:	^(SELECT_FROM fromClause selectClause)
 	;
 
 fromClause
@@ -131,7 +131,6 @@ fromClause
 
 persisterSpaces
 	:	^(PERSISTER_SPACE persisterSpace)
-	|	^(PATH identPrimary)
 	;
 
 persisterSpace
@@ -203,6 +202,10 @@ predicate
 	|	^( NOT_BETWEEN rowValueConstructor betweenList )
 	|	^( IN rowValueConstructor inPredicateValue )
 	|	^( NOT_IN rowValueConstructor inPredicateValue )
+	|	^( MEMBER_OF rowValueConstructor rowValueConstructor )
+	|	^( NOT_MEMBER_OF rowValueConstructor rowValueConstructor  )
+	|	^( IS_EMPTY rowValueConstructor )
+	|	^( IS_NOT_EMPTY rowValueConstructor )
 	|	rowValueConstructor
 	;
 
