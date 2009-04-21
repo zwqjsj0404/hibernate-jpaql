@@ -34,7 +34,7 @@ import org.antlr.runtime.Token;
 
 /**
  * todo : javadocs
- *
+ * 
  * @author Steve Ebersole
  */
 public class HibernateTree extends CommonTree {
@@ -48,30 +48,33 @@ public class HibernateTree extends CommonTree {
 	 */
 	int endCharOffset = -1;
 
+	public HibernateTree() {
+	}
+
 	public HibernateTree(HibernateTree node) {
-		super( node );
+		super(node);
 		this.token = node.token;
 	}
 
 	public HibernateTree(Token token) {
-		super( token );
+		super(token);
 	}
 
 	public HibernateTree(int type, String text) {
-		this( new HibernateToken( type, text ) );
+		this(new HibernateToken(type, text));
 	}
 
 	public HibernateTree(int type) {
-		this( new HibernateToken( type ) );
+		this(new HibernateToken(type));
 	}
 
 	public Tree dupNode() {
-		return new HibernateTree( this );
+		return new HibernateTree(this);
 	}
 
 	/**
 	 * getter for start char offset
-	 *
+	 * 
 	 * @return start char offset
 	 */
 	public int getStartCharOffset() {
@@ -80,8 +83,9 @@ public class HibernateTree extends CommonTree {
 
 	/**
 	 * setter for start char offset
-	 *
-	 * @param startCharOffset start char offset
+	 * 
+	 * @param startCharOffset
+	 *            start char offset
 	 */
 	public void setStartCharOffset(int startCharOffset) {
 		this.startCharOffset = startCharOffset;
@@ -89,7 +93,7 @@ public class HibernateTree extends CommonTree {
 
 	/**
 	 * getter of end char offset
-	 *
+	 * 
 	 * @return end char offset
 	 */
 	public int getEndCharOffset() {
@@ -98,8 +102,9 @@ public class HibernateTree extends CommonTree {
 
 	/**
 	 * setter of end char offset
-	 *
-	 * @param endCharOffset end char offset
+	 * 
+	 * @param endCharOffset
+	 *            end char offset
 	 */
 	public void setEndCharOffset(int endCharOffset) {
 		this.endCharOffset = endCharOffset;

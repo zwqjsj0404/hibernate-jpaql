@@ -26,6 +26,9 @@ SELECT/FROM STATEMENT
 "from org.hibernate.test.Inner i where i.outer.inner.middle = 'xyz'"  OK
 //testDynamicInstantiation
 "select new list(a, mate) from Animal a join a.mate as mate"  OK
+"from Animal join a.mate"  OK
+"from Animal, aaa , dddd"  OK
+"from Animal, aaa join fetch dddd" OK
 //testListOrMapKeywordReference
 "select p from eg.NameList nl, eg.Person p where p.name = some elements(nl.names)"  OK
 "select p from eg.NameList list, eg.Person p where p.name = some elements(list.names)"  OK
@@ -1526,7 +1529,7 @@ SELECT/FROM STATEMENT
 //ASTParserLoadingTest.testDynamicInstantiationQueries
 "select new list(an.description, an.bodyWeight) from Animal an"  OK
 "select new map(an.description, an.bodyWeight) from Animal an"  OK
-"select new map(an.description as descr, an.bodyWeight as bw) from Animal an"  -> (AAA)
+"select new map(an.description as descr, an.bodyWeight as bw) from Animal an"  OK
 //ASTParserLoadingTest.testResultTransformerScalarQueries
 "select an.description as description, an.bodyWeight as bodyWeight from Animal an order by bodyWeight desc"  OK
 "select a from Animal a, Animal b order by a.id"  OK

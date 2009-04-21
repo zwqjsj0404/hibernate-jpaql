@@ -9,4 +9,6 @@ public interface ParserContext {
 	public boolean isEntityName(String text);
 
 	public List getEntityImplementors(String text);
+	
+	public String buildUniqueImplicitAlias();
 }

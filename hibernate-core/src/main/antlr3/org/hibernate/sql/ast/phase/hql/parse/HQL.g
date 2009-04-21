@@ -8,6 +8,7 @@ tokens {
 //GENERIC SQL TOKENS
 	TABLE;
 	COLUMN;
+	COLUMN_LIST;
 
 //VIRTUAL TOKENS
 	ALIAS_NAME;
@@ -189,6 +190,7 @@ import java.util.LinkedList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Iterator;
+import org.hibernate.sql.ast.tree.EntityNameTree;
 }
 
 @lexer::header {
@@ -349,7 +351,7 @@ package org.hibernate.sql.ast.phase.hql.parse;
     	return implementors;
     }
     
-	private Object generatePersisterSpacesTree(List persistenceSpaces) {
+	private Tree generatePersisterSpacesTree(List persistenceSpaces) {
 	    List persisterSpaceList = new ArrayList();
 	    for (Iterator iterator = persistenceSpaces.iterator(); iterator
 				.hasNext();) {
@@ -372,54 +374,77 @@ package org.hibernate.sql.ast.phase.hql.parse;
 
 		return resultTree;
 	}
-	
-    private Object generateUpdateStatementTree(Object updateKey, Object entityName,
-			Object aliasClause, Object setClause, Object whereClause) {
-		Object result = (Object)adaptor.nil();
-    	EntityNameTree entityNameTree = (EntityNameTree) entityName;
-    	for (int i = 0; i < entityNameTree.getEntityCount(); i++) {
-    		Object root_1 = (Object)adaptor.nil();
-    		root_1 = (Object)adaptor.becomeRoot(new CommonTree((CommonTree)updateKey), root_1);
 
-    		adaptor.addChild(root_1, new EntityNameTree(entityNameTree, entityNameTree.getEntityName(i)));
+	private Tree generateUpdateStatementTree(Object updateKey,
+			Object entityName, Object aliasClause, Object setClause,
+			Object whereClause) {
+		Tree result = new CommonTree();
+		EntityNameTree entityNameTree = (EntityNameTree) entityName;
+		for (int i = 0; i < entityNameTree.getEntityCount(); i++) {
+			Tree updateRoot = new CommonTree((CommonTree) updateKey);
 
-    		if ( aliasClause != null ) {
-    		    adaptor.addChild(root_1, aliasClause);
-    		}
-    		adaptor.addChild(root_1, setClause);
+			updateRoot.addChild(new EntityNameTree(entityNameTree,
+					entityNameTree.getEntityName(i)));
 
-    		if ( whereClause != null ) {
-    		    adaptor.addChild(root_1, whereClause);
-    		}
+			if (aliasClause != null) {
+				updateRoot.addChild((Tree) aliasClause);
+			}
+			updateRoot.addChild((Tree) setClause);
 
-    		adaptor.addChild(result, root_1);
+			if (whereClause != null) {
+				updateRoot.addChild((Tree) whereClause);
+			}
+
+			result.addChild(updateRoot);
+		}
+		return result;
+	}
+
+	private Tree generateDeleteStatementTree(Object deleteKey,
+			Object entityName, Object aliasClause, Object whereClause) {
+		Tree result = new CommonTree();
+		EntityNameTree entityNameTree = (EntityNameTree) entityName;
+		for (int i = 0; i < entityNameTree.getEntityCount(); i++) {
+			Tree deleteRoot = new CommonTree((CommonTree) deleteKey);
+
+			deleteRoot.addChild(new EntityNameTree(entityNameTree,
+					entityNameTree.getEntityName(i)));
+
+			if (aliasClause != null) {
+				deleteRoot.addChild((Tree) aliasClause);
+			}
+
+			if (whereClause != null) {
+				deleteRoot.addChild((Tree) whereClause);
+			}
+
+			result.addChild(deleteRoot);
 		}
 		return result;
 	}
 	
-	private Object generateDeleteStatementTree(Object deleteKey, Object entityName,
-			Object aliasClause, Object whereClause) {
-		Object result = (Object)adaptor.nil();
-    	EntityNameTree entityNameTree = (EntityNameTree) entityName;
-    	for (int i = 0; i < entityNameTree.getEntityCount(); i++) {
-    		Object root_1 = (Object)adaptor.nil();
-    		root_1 = (Object)adaptor.becomeRoot(new CommonTree((CommonTree)deleteKey), root_1);
-
-    		adaptor.addChild(root_1, new EntityNameTree(entityNameTree, entityNameTree.getEntityName(i)));
-
-    		if ( aliasClause != null ) {
-    		    adaptor.addChild(root_1, aliasClause);
-    		}
-
-    		if ( whereClause != null ) {
-    		    adaptor.addChild(root_1, whereClause);
-    		}
-
-    		adaptor.addChild(result, root_1);
+	private Tree generateSelecFromTree(Object selectClause, Object fromClause, List aliasList){
+		Tree result = new CommonTree(new CommonToken(SELECT_FROM, "SELECT_FROM"));
+		Tree selectTree = null;
+		result.addChild((Tree) fromClause);
+		if (selectClause == null && aliasList != null && aliasList.size() > 0) {
+			selectTree = new CommonTree(new CommonToken(SELECT, "SELECT"));
+			Tree selectList = new CommonTree(new CommonToken(SELECT_LIST, "SELECT_LIST"));
+			for (Iterator iterator = aliasList.iterator(); iterator
+					.hasNext();) {
+				String aliasName = (String) iterator.next();
+				Tree selectElement = new CommonTree(new CommonToken(SELECT_ITEM, "SELECT_ITEM"));
+				Tree aliasElement = new CommonTree(new CommonToken(ALIAS_REF, aliasName));
+				selectElement.addChild(aliasElement);
+				selectList.addChild(selectElement);
+			}
+			selectTree.addChild(selectList);
+		} else {
+			selectTree = (Tree) selectClause;
 		}
+		result.addChild(selectTree);
 		return result;
 	}
-	
 }
 
 filterStatement[String collectionRole]
@@ -446,7 +471,7 @@ scope{
 }
 	:	udpate_key
 		(versioned_key {$updateStatement::generateVersionedField = true;})? 
-			from_key? entityName aliasClause setClause whereClause?
+			from_key? entityName aliasClause[true] setClause whereClause?
 		-> {	generateUpdateStatementTree($udpate_key.tree, $entityName.tree, $aliasClause.tree, $setClause.tree, $whereClause.tree )	}
 	;
 
@@ -465,7 +490,7 @@ assignmentField
 	;
 
 deleteStatement
-	:	delete_key from_key? entityName aliasClause whereClause?
+	:	delete_key from_key? entityName aliasClause[true] whereClause?
 		-> {	generateDeleteStatementTree($delete_key.tree, $entityName.tree, $aliasClause.tree, $whereClause.tree )	}
 	;
 
@@ -476,7 +501,8 @@ insertStatement
 
 //TODO: Generate an exception when try to use a polimorfic entity at INTO clause
 intoClause
-	:	into_key^ entityName insertabilitySpecification
+	:	into_key entityName insertabilitySpecification
+		-> ^(into_key entityName ALIAS_NAME[context.buildUniqueImplicitAlias()] insertabilitySpecification)
 	;
 
 insertabilitySpecification
@@ -525,8 +551,8 @@ whereClause
 	;
 
 selectFrom
-	:	selectClause? fromClause
-		-> ^(SELECT_FROM fromClause selectClause?)
+	:	sc=selectClause? fc=fromClause
+		-> { generateSelecFromTree($sc.tree, $fc.tree, $fc.aliasList)}
 	;
 
 subQuery
@@ -536,7 +562,12 @@ subQuery
 		-> ^(SUB_QUERY ^(QUERY queryExpression))
 	;
 
-fromClause
+fromClause returns [List aliasList]
+scope{
+	List aliases;
+}
+@init	{	$fromClause::aliases = new ArrayList();	}
+@after	{	$aliasList = $fromClause::aliases;	}
 	:	from_key^ 
 			persisterSpaces
 	;
@@ -556,8 +587,9 @@ crossJoin
 	;
 
 qualifiedJoin
-@init	{ boolean isEntityReference = false; List entityNames = null; }
-	:	nonCrossJoinType join_key fetch_key? path aliasClause
+@init	{ boolean isEntityReference = false; boolean hasFetch = false; List entityNames = null; }
+@after	{ if (!hasFetch) $fromClause::aliases.add(((Tree)$ac.tree).getText()); }
+	:	nonCrossJoinType join_key (fetch_key {hasFetch = true;})? path ac=aliasClause[true]
 	(	on_key 
 	{	isEntityReference = true;
 		entityNames = extractEntityNames($path.text);	} 
@@ -593,7 +625,8 @@ backtrack=true;
 	;
 
 mainEntityPersisterReference
-	:	entityName aliasClause propertyFetch?
+@after	{ $fromClause::aliases.add(((Tree)$ac.tree).getText()); }
+	:	entityName ac=aliasClause[true] propertyFetch?
 		-> ^(ENTITY_PERSISTER_REF entityName aliasClause? propertyFetch?)
 	;
 
@@ -604,14 +637,16 @@ propertyFetch
 
 hibernateLegacySyntax returns [boolean isPropertyJoin]
 @init {$isPropertyJoin = false;}
-	:	aliasDeclaration in_key
+@after	{ $fromClause::aliases.add(((Tree)$ad.tree).getText()); }
+	:	ad=aliasDeclaration in_key
 	(	class_key entityName -> ^(ENTITY_PERSISTER_REF entityName aliasDeclaration) 
 	|	collectionExpression {$isPropertyJoin = true;} -> ^(PROPERTY_JOIN INNER[$in_key.start, "inner legacy"] aliasDeclaration collectionExpression)
 	)
 	;
 
 jpaCollectionReference
-	:	in_key LEFT_PAREN propertyReference RIGHT_PAREN aliasClause
+@after	{ $fromClause::aliases.add(((Tree)$ac.tree).getText()); }
+	:	in_key LEFT_PAREN propertyReference RIGHT_PAREN ac=aliasClause[true]
 		-> ^(PROPERTY_JOIN INNER[$in_key.start, "inner"] aliasClause? propertyReference) 
 	;
 
@@ -638,14 +673,15 @@ selectExpression
 @init	{ if (state.backtracking == 0) enableParameterUsage.push(Boolean.FALSE); }
 @after	{ enableParameterUsage.pop(); }
 //PARAMETERS CAN'T BE USED -> This verification should be scoped
-	:	expression aliasClause
+	:	expression aliasClause[false]
 		-> ^(SELECT_ITEM expression aliasClause?)
 	;
 
-aliasClause
+aliasClause[boolean generateAlias]
 options{
     k=2;
-}	:
+}	:	-> {$generateAlias}? ALIAS_NAME[context.buildUniqueImplicitAlias()]
+		->
 	|	aliasDeclaration
 	|	as_key! aliasDeclaration
 	;
@@ -807,7 +843,7 @@ unaryExpression
 	|	standardFunction
 	|	setFunction
 	|	collectionFunction
-	|	collectionExpressionSimple
+	|	collectionExpression
 	|	atom
 	;
 
@@ -854,8 +890,8 @@ searchedWhenClause
 
 quantifiedExpression
 	:	( some_key^ | exists_key^ | all_key^ | any_key^ ) 
-	(	aliasReference
-	|	collectionExpression
+	(	collectionExpression
+	|	aliasReference
 	|	LEFT_PAREN! subQuery RIGHT_PAREN!
 	)
 	;
@@ -1024,14 +1060,8 @@ setFunction
 
 countFunctionArguments
 @init { int type = -1;}
-	:	path
-		-> {type == 1}? ^(ELEMENTS ^(PROPERTY_REFERENCE path))
-	    -> {type == 2}? ^(INDICES ^(PROPERTY_REFERENCE path))
-		-> ^(PROPERTY_REFERENCE path)
-	//TODO if ends with:
-	//  .elements or .indices -> it is a collectionExpression
-	//if not -> it is a property reference
-	|	collectionExpressionSimple
+	:	propertyReference
+	|	collectionExpression
 	|	numeric_literal
 	;
 
@@ -1043,11 +1073,6 @@ collectionFunction
 
 collectionExpression
 	:	(elements_key^|indices_key^) LEFT_PAREN! propertyReference RIGHT_PAREN!
-	|	propertyReference DOT! (elements_key^|indices_key^)
-	;
-
-collectionExpressionSimple
-	:	(elements_key^|indices_key^) LEFT_PAREN! propertyReference RIGHT_PAREN!
 	;
 
 atom
@@ -1055,13 +1080,10 @@ atom
 	:	identPrimary
 	    //TODO  if ends with:
 	    //  .class -> class type
-	    //  .elements or .indices -> it is a collectionExpression
 	    //  if contains "()" it is a function call 
 	    //  if it is constantReference (using context)
 	    //  otherwise it will be a generic element to be resolved on the next phase (1st tree walker)
 	    -> {type == 0}? ^(DOT_CLASS identPrimary)
-	    -> {type == 1}? ^(ELEMENTS ^(PROPERTY_REFERENCE identPrimary))
-	    -> {type == 2}? ^(INDICES ^(PROPERTY_REFERENCE identPrimary))
 	    -> {type == 3}? ^(GENERAL_FUNCTION_CALL identPrimary)
 	    -> {type == 4}? ^(JAVA_CONSTANT identPrimary) //-> here will have 2 strutctures element and the constant
 	    -> ^(PATH identPrimary)
