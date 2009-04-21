@@ -61,6 +61,8 @@ public interface PersisterSpace {
 
 	public Table.TableSpace getTableSpace();
 
+	public boolean contansProperty(String propertyName);
+
 	public Type getPropertyType(String propertyName);
 
 	public Table locateReusablePropertyJoinedTable(String propertyName);
