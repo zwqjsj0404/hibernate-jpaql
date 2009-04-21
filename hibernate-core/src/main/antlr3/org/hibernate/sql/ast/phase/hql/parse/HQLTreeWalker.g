@@ -143,7 +143,7 @@ persisterSpaceRoot
 	;
 
 joins
-	:	^(PROPERTY_JOIN joinType FETCH? ALIAS_NAME PROP_FETCH? collectionExpression withClause?)
+	:	^(PROPERTY_JOIN joinType FETCH? ALIAS_NAME PROP_FETCH? (collectionExpression|propertyReference) withClause?)
 	|	^(PERSISTER_JOIN joinType persisterSpaceRoot onClause?)
 	;
 
@@ -258,7 +258,7 @@ valueExpressionPrimary
 	:	caseExpression
 	|	function
 	|	collectionFunction
-	|	collectionExpressionSimple
+	|	collectionExpression
 	|	constant
 	|	parameter
 	|	propertyReference
@@ -434,7 +434,7 @@ setFunction
 	;
 
 countFunctionArguments
-	:	collectionExpressionSimple
+	:	collectionExpression
 	|	propertyReference
 	|	numeric_literal
 	;
@@ -448,15 +448,9 @@ collectionPropertyReference
 	:	propertyReference
 	;
 
-collectionExpressionSimple
-	:	^(ELEMENTS propertyReference) //it will generate a SELECT m.column form Table xxx -> it is realted to Hibernate mappings to Table->Map
-	|	^(INDICES propertyReference)
-	;
-
 collectionExpression
 	:	^(ELEMENTS propertyReference) //it will generate a SELECT m.column form Table xxx -> it is realted to Hibernate mappings to Table->Map
 	|	^(INDICES propertyReference)
-	|	propertyReference
 	;
 
 parameter
