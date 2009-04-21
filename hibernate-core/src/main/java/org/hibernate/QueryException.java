@@ -32,9 +32,14 @@ public class QueryException extends HibernateException {
 
 	private String queryString;
 
+	protected QueryException() {
+		super( "<expecting override of message building>" );
+	}
+
 	public QueryException(String message) {
 		super(message);
 	}
+
 	public QueryException(String message, Throwable e) {
 		super(message, e);
 	}
@@ -47,6 +52,7 @@ public class QueryException extends HibernateException {
 	public QueryException(Exception e) {
 		super(e);
 	}
+
 	public String getQueryString() {
 		return queryString;
 	}
@@ -56,11 +62,16 @@ public class QueryException extends HibernateException {
 	}
 
 	public String getMessage() {
-		String msg = super.getMessage();
-		if ( queryString!=null ) msg += " [" + queryString + ']';
+		String msg = internalGetMessage();
+		if ( queryString != null ) {
+			msg += " [" + queryString + ']';
+		}
 		return msg;
 	}
 
+	protected String internalGetMessage() {
+		return super.getMessage();
+	}
 }
 
 

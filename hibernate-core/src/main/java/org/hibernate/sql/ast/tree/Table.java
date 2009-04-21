@@ -26,12 +26,11 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-
 package org.hibernate.sql.ast.tree;
 
-import java.util.List;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.HashMap;
 
 import org.antlr.runtime.Token;
 
@@ -41,6 +40,7 @@ import org.hibernate.sql.ast.common.HibernateTree;
 import org.hibernate.sql.ast.common.HibernateToken;
 import org.hibernate.sql.ast.util.DisplayableNode;
 import org.hibernate.sql.ast.phase.hql.parse.HQLParser;
+import org.hibernate.sql.ast.phase.hql.resolve.PersisterSpace;
 import org.hibernate.persister.entity.Queryable;
 import org.hibernate.persister.collection.QueryableCollection;
 import org.hibernate.util.StringHelper;
@@ -95,13 +95,26 @@ public class Table extends HibernateTree implements DisplayableNode {
 		return "[source-alias=" + tableSpace.getSourceAlias() + "]";
 	}
 
+	/**
+	 * Represents a grouping of related tables (i.e. all tables for a given persister).
+	 */
 	public static interface TableSpace {
+
+		public void addTable(Table table);
+
 		/**
 		 * Used as a unique identification since each table space originates from a single source alias (persister reference).
 		 *
 		 * @return The source alias.
 		 */
 		public String getSourceAlias();
+
+		/**
+		 * PersisterSpace and TableSpace are related one-to-one...
+		 *
+		 * @return The persister space corresponding to this table space.
+		 */
+		public PersisterSpace getPersisterSpace();
 
 		/**
 		 * Get the table reference that should act as the RHS for this table space whenever we join to into it.
@@ -112,8 +125,7 @@ public class Table extends HibernateTree implements DisplayableNode {
 
 		public String[] getJoinIntoColumns();
 
-		public void addTable(Table table);
-
+		public Type getPropertyType(String propertyName);
 
 		/**
 		 * Get the table reference that contains the columns to which the given property is mapped.
@@ -124,23 +136,23 @@ public class Table extends HibernateTree implements DisplayableNode {
 		 */
 		public Table getContainingTable(String propertyName);
 
-		public Type getPropertyType(String propertyName);
-
 		public String[] getPropertyColumnNames(String propertyName);
 
-		public List buildIdentifierColumnReferences();
+		public HibernateTree buildIdentifierColumnReferences();
 
-		public List buildCompleteColumnReferences();
+		public HibernateTree buildCompleteColumnReferences();
 	}
 
 	public static abstract class AbstractTableSpace implements Table.TableSpace {
 		private final String sourceAlias;
-		private final String sqlAliasBaseRoot;
+		private final boolean implicitSourceAlias;
 		protected final LinkedHashSet<Table> tables = new LinkedHashSet<Table>();
+		protected final HashMap<String,Table> aliasToTableMap = new HashMap<String,Table>();
+		protected final HashMap<String,Table> nameToTableMap = new HashMap<String,Table>();
 
-		private AbstractTableSpace(String sourceAlias, String persisterName) {
+		private AbstractTableSpace(String sourceAlias) {
 			this.sourceAlias = sourceAlias;
-			this.sqlAliasBaseRoot = ImplicitAliasGenerator.isImplicitAlias( sourceAlias ) ? persisterName : sourceAlias;
+			this.implicitSourceAlias = ImplicitAliasGenerator.isImplicitAlias( sourceAlias );
 		}
 
 		public String getSourceAlias() {
@@ -148,32 +160,46 @@ public class Table extends HibernateTree implements DisplayableNode {
 		}
 
 		public String getSqlAliasBaseRoot() {
-			return sqlAliasBaseRoot;
+			return implicitSourceAlias ? getPersisterSpace().getShortName() : sourceAlias;
 		}
 
 		public void addTable(Table table) {
 			tables.add( table );
+			aliasToTableMap.put( table.getAliasText(), table );
+			nameToTableMap.put( table.getTableNameText(), table );
+		}
+	}
+
+	public static abstract class AbstractPersisterSpace implements PersisterSpace {
+		private final HashMap<String,Table> propertyToJoinedTableMap = new HashMap<String,Table>();
+
+		public Table locateReusablePropertyJoinedTable(String propertyName) {
+			return propertyToJoinedTableMap.get( propertyName );
+		}
+
+		public void registerReusablePropertyJoinedTable(String propertyName, Table table) {
+			propertyToJoinedTableMap.put( propertyName, table );
 		}
 	}
 
 	public static class EntityTableSpace extends AbstractTableSpace {
-		private final Queryable entityPersister;
+		private final EntityPersisterSpace persisterSpace;
 		private final ArrayList tables;
 
 		public EntityTableSpace(Queryable entityPersister, String sourecAlias) {
-			super( sourecAlias, StringHelper.unqualifyEntityName( entityPersister.getEntityName() ) );
-			this.entityPersister = entityPersister;
+			super( sourecAlias );
+			this.persisterSpace = new EntityPersisterSpace( this, entityPersister );
 			int numberOfTables = entityPersister.getMappedTableMetadata().getJoinedTables().length + 1;
 			int listSize = numberOfTables + (int) ( numberOfTables * .75 ) + 1;
 			this.tables = new ArrayList( listSize );
 		}
 
-		public Queryable getEntityPersister() {
-			return entityPersister;
+		public PersisterSpace getPersisterSpace() {
+			return persisterSpace;
 		}
 
-		public void addTable(Table table) {
-			tables.add( table );
+		public Queryable getEntityPersister() {
+			return persisterSpace.getEntityPersister();
 		}
 
 		public Table getDrivingTable() {
@@ -185,67 +211,96 @@ public class Table extends HibernateTree implements DisplayableNode {
 		}
 
 		public String[] getJoinIntoColumns() {
-			return entityPersister.getIdentifierColumnNames();
+			return getEntityPersister().getIdentifierColumnNames();
 		}
 
 		public Table getContainingTable(String propertyName) {
-			return ( Table ) tables.get( entityPersister.getSubclassPropertyTableNumber( propertyName ) );
+			// todo : probably a better solution here is to iterate the internal collection of tables...
+			return ( Table ) tables.get( getEntityPersister().getSubclassPropertyTableNumber( propertyName ) );
 		}
 
 		public Type getPropertyType(String propertyName) {
-			return entityPersister.getPropertyType( propertyName );
+			return getEntityPersister().getPropertyType( propertyName );
 		}
 
 		public String[] getPropertyColumnNames(String propertyName) {
-			int index = entityPersister.getEntityMetamodel().getPropertyIndex( propertyName );
-			return entityPersister.getPropertyColumnNames( index );
+			int index = getEntityPersister().getEntityMetamodel().getPropertyIndex( propertyName );
+			return getEntityPersister().getPropertyColumnNames( index );
 		}
 
-		public List buildIdentifierColumnReferences() {
-			String[] identifierColumnsNames = entityPersister.getIdentifierColumnNames();
-			ArrayList columnsReferences = new ArrayList( collectionSizeWithoutRehashing( identifierColumnsNames.length ) );
-			for ( int i = 0; i < identifierColumnsNames.length; i++ ) {
+		public HibernateTree buildIdentifierColumnReferences() {
+			HibernateTree columnList = new HibernateTree( HQLParser.COLUMN_LIST );
+			for ( String columnName : getEntityPersister().getIdentifierColumnNames() ) {
 				HibernateTree columnNode = new HibernateTree( HQLParser.COLUMN );
 				columnNode.addChild( new HibernateTree( HQLParser.ALIAS_REF, getDrivingTable().getAliasText() ) );
-				columnNode.addChild( new HibernateTree( HQLParser.IDENTIFIER, identifierColumnsNames[i] ) );
-				columnsReferences.add( columnNode );
+				columnNode.addChild( new HibernateTree( HQLParser.IDENTIFIER, columnName ) );
+				columnList.addChild( columnNode );
 			}
-			return columnsReferences;
+			return columnList;
 		}
 
-		public List buildCompleteColumnReferences() {
+		public HibernateTree buildCompleteColumnReferences() {
 			// todo : implement
 			return null;
 		}
 	}
 
-	private static int collectionSizeWithoutRehashing(int elements) {
-		// usually collection load factors are .75
-		return collectionSizeWithoutRehashing( elements, .75 );
-	}
+	private static class EntityPersisterSpace extends AbstractPersisterSpace {
+		private final EntityTableSpace correspondingTableSpace;
+		private final Queryable entityPersister;
+		private final String shortName;
 
-	private static int collectionSizeWithoutRehashing(int elements, double factor) {
-		return elements + ( (int) ( elements * factor ) + 1 );
+		private EntityPersisterSpace(EntityTableSpace correspondingTableSpace, Queryable entityPersister) {
+			this.correspondingTableSpace = correspondingTableSpace;
+			this.entityPersister = entityPersister;
+			this.shortName = StringHelper.unqualifyEntityName( entityPersister.getEntityName() );
+		}
+
+		public Queryable getEntityPersister() {
+			return entityPersister;
+		}
+
+		public String getSourceAlias() {
+			return correspondingTableSpace.getSourceAlias();
+		}
+
+		public String getName() {
+			return entityPersister.getName();
+		}
+
+		public String getShortName() {
+			return shortName;
+		}
+
+		public TableSpace getTableSpace() {
+			return correspondingTableSpace;
+		}
+
+		public Type getPropertyType(String propertyName) {
+			return entityPersister.getPropertyType( propertyName );
+		}
 	}
 
 	public static class CollectionTableSpace extends AbstractTableSpace {
-		private final QueryableCollection persister;
-		private final boolean areElementsEntities;
+		private final CollectionPersisterSpace persisterSpace;
 
 		private Table collectionTable;
 		private EntityTableSpace entityElementTableSpace;
 
 		public CollectionTableSpace(QueryableCollection persister, String sourceAlias) {
-			super( sourceAlias, StringHelper.unqualify( persister.getRole() ) );
-			this.persister = persister;
-			this.areElementsEntities = persister.getElementType().isEntityType();
-			if ( areElementsEntities ) {
+			super( sourceAlias );
+			this.persisterSpace = new CollectionPersisterSpace( this, persister );
+			if ( persisterSpace.areElementsEntities ) {
 				entityElementTableSpace = new EntityTableSpace( ( Queryable ) persister.getElementPersister(), sourceAlias );
 			}
 		}
 
-		public QueryableCollection getPersister() {
-			return persister;
+		public QueryableCollection getCollectionPersister() {
+			return persisterSpace.getCollectionPersister();
+		}
+
+		public PersisterSpace getPersisterSpace() {
+			return persisterSpace;
 		}
 
 		public void setCollectionTable(Table collectionTable) {
@@ -261,7 +316,7 @@ public class Table extends HibernateTree implements DisplayableNode {
 		}
 
 		public String[] getJoinIntoColumns() {
-			return persister.getKeyColumnNames();
+			return getCollectionPersister().getKeyColumnNames();
 		}
 
 		public Table getContainingTable(String propertyName) {
@@ -277,14 +332,55 @@ public class Table extends HibernateTree implements DisplayableNode {
 			return getEntityElementTableSpace().getPropertyColumnNames( propertyName );
 		}
 
-		public List buildIdentifierColumnReferences() {
+		public HibernateTree buildIdentifierColumnReferences() {
 			// todo : implement
 			return null;
 		}
 
-		public List buildCompleteColumnReferences() {
+		public HibernateTree buildCompleteColumnReferences() {
 			// todo : implement
 			return null;
+		}
+	}
+
+	public static class CollectionPersisterSpace extends AbstractPersisterSpace {
+		private final CollectionTableSpace correspondingTableSpace;
+		private final QueryableCollection collectionPersister;
+
+		private final String shortName;
+		private final boolean areElementsEntities;
+
+		public CollectionPersisterSpace(CollectionTableSpace correspondingTableSpace, QueryableCollection collectionPersister) {
+			this.correspondingTableSpace = correspondingTableSpace;
+			this.collectionPersister = collectionPersister;
+			this.shortName = StringHelper.unqualify( collectionPersister.getRole() );
+			this.areElementsEntities = collectionPersister.getElementType().isEntityType();
+		}
+
+		public String getSourceAlias() {
+			return correspondingTableSpace.getSourceAlias();
+		}
+
+		public QueryableCollection getCollectionPersister() {
+			return collectionPersister;
+		}
+
+		public String getName() {
+			return collectionPersister.getRole();
+		}
+
+		public String getShortName() {
+			return shortName;
+		}
+
+		public TableSpace getTableSpace() {
+			return correspondingTableSpace;
+		}
+
+		public Type getPropertyType(String propertyName) {
+			return areElementsEntities
+					? correspondingTableSpace.entityElementTableSpace.getPersisterSpace().getPropertyType( propertyName )
+					: null;
 		}
 	}
 }

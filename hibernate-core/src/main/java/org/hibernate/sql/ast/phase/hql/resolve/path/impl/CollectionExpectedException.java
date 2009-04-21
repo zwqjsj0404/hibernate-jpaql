@@ -26,43 +26,21 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-package org.hibernate.sql.ast.phase.hql.resolve;
 
-import org.hibernate.type.Type;
-import org.hibernate.sql.ast.tree.Table;
+package org.hibernate.sql.ast.phase.hql.resolve.path.impl;
 
 /**
+ * Indicates that we were expecting a property reference to identify a collection, but it did not.
  *
  * @author Steve Ebersole
  */
-public interface PersisterSpace {
-	/**
-	 * Retrieve the corresponding alias from the input (HQL, etc).
-	 *
-	 * @return The source alias.
-	 */
-	public String getSourceAlias();
+public class CollectionExpectedException extends AbstractUnexpectedPropertyTypeException {
+	public CollectionExpectedException(String path, String persisterName, String propertyName) {
+		super( path, persisterName, propertyName );
+	}
 
-	/**
-	 * Retrieve the name of the underlying persister.
-	 *
-	 * @return The persister name.
-	 */
-	public String getName();
-
-	/**
-	 * Retrieve the short (unqualified) version of the persister name.
-	 * <p/>
-	 * Useful for alias basing.
-	 *
-	 * @return The persister short name.
-	 */
-	public String getShortName();
-
-	public Table.TableSpace getTableSpace();
-
-	public Type getPropertyType(String propertyName);
-
-	public Table locateReusablePropertyJoinedTable(String propertyName);
-	public void registerReusablePropertyJoinedTable(String propertyName, Table table);
+	@Override
+	protected String internalGetMessage() {
+		return "Expected property reference [" + buildPropertyReferenceFragment() + "] to identify collection";
+	}
 }

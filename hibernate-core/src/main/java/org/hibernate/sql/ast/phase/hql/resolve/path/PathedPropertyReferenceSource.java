@@ -26,13 +26,11 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-
 package org.hibernate.sql.ast.phase.hql.resolve.path;
 
 import org.antlr.runtime.tree.Tree;
 
 import org.hibernate.sql.ast.common.HibernateTree;
-import org.hibernate.sql.ast.phase.hql.resolve.PropertyPathTerminus;
 
 /**
  * The contract for representing the non-terminal parts of a property path expression
@@ -66,7 +64,7 @@ public interface PathedPropertyReferenceSource extends Tree {
 	 *
 	 * @return The property reference terminus.
 	 */
-	public PropertyPathTerminus handleTerminalPathPart(String name);
+	public HibernateTree handleTerminalPathPart(String name);
 
 	/**
 	 * Handle an index access operation (a.b[selector] for example).  In this particular case the index access
@@ -88,5 +86,5 @@ public interface PathedPropertyReferenceSource extends Tree {
 	 *
 	 * @return The property reference terminus.
 	 */
-	public PropertyPathTerminus handleTerminalIndexAccess(String collectionPropertyName, HibernateTree selector);
+	public HibernateTree handleTerminalIndexAccess(String collectionPropertyName, HibernateTree selector);
 }

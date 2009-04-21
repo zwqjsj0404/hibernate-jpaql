@@ -30,6 +30,7 @@
 package org.hibernate.sql.ast.phase.hql.resolve;
 
 import org.hibernate.persister.MappedTableMetadata;
+import org.hibernate.persister.collection.QueryableCollection;
 import org.hibernate.persister.entity.Queryable;
 import org.hibernate.sql.ast.alias.TableAliasGenerator;
 import org.hibernate.sql.ast.common.HibernateTree;
@@ -44,6 +45,7 @@ import org.hibernate.sql.ast.tree.Table;
  * @author Steve Ebersole
  */
 public class PersisterTableExpressionGenerator {
+
 	public static Table generateTableExpression(
 			Queryable persister,
 			TableAliasGenerator.TableAliasRoot aliasRoot,
@@ -57,14 +59,13 @@ public class PersisterTableExpressionGenerator {
 
 		int suffix = 0;
 
-		MappedTableMetadata.JoinedTable[] tables = tableMetadata.getJoinedTables();
-		for ( int i = 0; i < tables.length; i++ ) {
+		for ( MappedTableMetadata.JoinedTable joinedTable : tableMetadata.getJoinedTables() ) {
 			final String joinTableAlias = aliasRoot.generate( ++suffix );
-			final Table table = generateTableReference( tables[i].getName(), joinTableAlias, tableSpace );
+			final Table table = generateTableReference( joinedTable.getName(), joinTableAlias, tableSpace );
 
 			final HibernateTree join = new HibernateTree( HQLParser.JOIN, "join" );
 			drivingTable.addChild( join );
-			if ( tables[i].useInnerJoin() ) {
+			if ( joinedTable.useInnerJoin() ) {
 				join.addChild( new HibernateTree( HQLParser.INNER, "inner" ) );
 			}
 			else {
@@ -78,12 +79,63 @@ public class PersisterTableExpressionGenerator {
 					drivingTableAlias,
 					drivingTableJoinColumns,
 					joinTableAlias,
-					tables[i].getKeyColumns()
+					joinedTable.getKeyColumns()
 			);
 			on.addChild( joinCondition );
 		}
 
 		return drivingTable;
+	}
+
+	public static Table generateTableExpression(
+			QueryableCollection collectionPersister,
+			TableAliasGenerator.TableAliasRoot aliasRoot,
+			Table.CollectionTableSpace tableSpace) {
+		if ( collectionPersister.isOneToMany() ) {
+			Table table = generateTableExpression(
+					( Queryable ) collectionPersister.getElementPersister(),
+					aliasRoot,
+					tableSpace.getEntityElementTableSpace()
+			);
+			tableSpace.setCollectionTable( table );
+			return table;
+		}
+		else {
+			Table associationTable = generateTableReference(
+					collectionPersister.getTableName(),
+					aliasRoot.generateCollectionTableAlias(),
+					tableSpace
+			);
+			tableSpace.setCollectionTable( associationTable );
+
+			if ( collectionPersister.isManyToMany() ) {
+				Queryable elementPersister = ( Queryable ) collectionPersister.getElementPersister();
+				Table drivingTable = generateTableExpression(
+						elementPersister,
+						aliasRoot,
+						tableSpace.getEntityElementTableSpace()
+				);
+
+				final HibernateTree join = new HibernateTree( HQLParser.JOIN );
+				associationTable.addChild( join );
+				join.addChild( new HibernateTree( HQLParser.LEFT, "left outer" ) );
+				join.addChild( drivingTable );
+
+				String[] entityFkColumnNames = collectionPersister.getElementColumnNames();
+				String[] entityPkColumnNames = elementPersister.getKeyColumnNames();
+
+				final HibernateTree on = new HibernateTree( HQLParser.ON );
+				join.addChild( on );
+				final HibernateTree joinCondition = generateJoinCorrelation(
+						associationTable.getAliasText(),
+						entityFkColumnNames,
+						drivingTable.getAliasText(),
+						entityPkColumnNames
+				);
+				on.addChild( joinCondition );
+			}
+			return associationTable;
+		}
 	}
 
 	private static Table generateTableReference(String tableName, String tableAlias, Table.TableSpace tableSpace) {

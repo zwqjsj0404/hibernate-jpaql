@@ -30,7 +30,6 @@
 package org.hibernate.sql.ast.phase.hql.resolve.path;
 
 import org.hibernate.sql.ast.phase.hql.resolve.PersisterSpace;
-import org.hibernate.sql.ast.phase.hql.resolve.PropertyPathTerminus;
 import org.hibernate.sql.ast.common.HibernateTree;
 
 /**
@@ -67,7 +66,7 @@ public interface PathResolutionStrategy {
 	 *
 	 * @return The terminal property reference indicated by the overall path.
 	 */
-	public PropertyPathTerminus handleTerminalPathPart(PathedPropertyReferenceSource source, String pathPart);
+	public HibernateTree handleTerminalPathPart(PathedPropertyReferenceSource source, String pathPart);
 
 	/**
 	 * Handle an index access operation (a.b[selector] for example).  In this particular case the index access
@@ -91,5 +90,5 @@ public interface PathResolutionStrategy {
 	 *
 	 * @return The terminal property reference indicated by the overall path.
 	 */
-	public PropertyPathTerminus handleTerminalIndexAccess(PathedPropertyReferenceSource source, String pathPart, HibernateTree selector);
+	public HibernateTree handleTerminalIndexAccess(PathedPropertyReferenceSource source, String pathPart, HibernateTree selector);
 }

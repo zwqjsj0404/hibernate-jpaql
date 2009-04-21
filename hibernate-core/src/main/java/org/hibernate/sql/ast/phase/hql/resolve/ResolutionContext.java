@@ -32,7 +32,7 @@ package org.hibernate.sql.ast.phase.hql.resolve;
 import org.antlr.runtime.tree.TreeAdaptor;
 
 import org.hibernate.engine.SessionFactoryImplementor;
-import org.hibernate.sql.ast.alias.ImplicitAliasGenerator;
+import org.hibernate.sql.ast.alias.TableAliasGenerator;
 import org.hibernate.sql.ast.util.TreePrinter;
 import org.hibernate.sql.ast.phase.hql.resolve.path.PathResolutionStrategy;
 
@@ -51,13 +51,6 @@ public interface ResolutionContext {
 	public SessionFactoryImplementor getSessionFactoryImplementor();
 
 	public TreeAdaptor getTreeAdaptor();
-
-//	/**
-//	 * The alias builder available in this context.
-//	 *
-//	 * @return The alias builder.
-//	 */
-//	public ImplicitAliasGenerator getAliasBuilder();
 
 	/**
 	 * The current {@link PersisterSpaceContext} for this context.  The {@link PersisterSpaceContext}
@@ -88,6 +81,8 @@ public interface ResolutionContext {
 	 */
 	public TreePrinter getTreePrinter();
 
+	public TableAliasGenerator getTableAliasGenerator();
+
 	/**
 	 * Is this context currently processing a function?
 	 *
@@ -97,7 +92,7 @@ public interface ResolutionContext {
 
 	public PathResolutionStrategy getCurrentPathResolutionStrategy();
 
-//	public void registerAssociationFetch(Join join);
-//
-//	public void registerPropertyFetch(PersisterReference persisterReference);
+	public void registerAssociationFetch(PersisterSpace persisterSpace);
+
+	public void registerPropertyFetch(PersisterSpace persisterSpace);
 }

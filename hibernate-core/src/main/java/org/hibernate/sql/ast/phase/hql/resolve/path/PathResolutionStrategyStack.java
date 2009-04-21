@@ -26,43 +26,28 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-package org.hibernate.sql.ast.phase.hql.resolve;
 
-import org.hibernate.type.Type;
-import org.hibernate.sql.ast.tree.Table;
+package org.hibernate.sql.ast.phase.hql.resolve.path;
+
+import java.util.LinkedList;
 
 /**
+ * Provides a stack of {@link PathResolutionStrategy} instances.
  *
  * @author Steve Ebersole
  */
-public interface PersisterSpace {
-	/**
-	 * Retrieve the corresponding alias from the input (HQL, etc).
-	 *
-	 * @return The source alias.
-	 */
-	public String getSourceAlias();
+public class PathResolutionStrategyStack {
+	private LinkedList<PathResolutionStrategy> stack = new LinkedList<PathResolutionStrategy>();
 
-	/**
-	 * Retrieve the name of the underlying persister.
-	 *
-	 * @return The persister name.
-	 */
-	public String getName();
+	public void push(PathResolutionStrategy handler) {
+		stack.addFirst( handler );
+	}
 
-	/**
-	 * Retrieve the short (unqualified) version of the persister name.
-	 * <p/>
-	 * Useful for alias basing.
-	 *
-	 * @return The persister short name.
-	 */
-	public String getShortName();
+	public PathResolutionStrategy pop() {
+		return stack.removeFirst();
+	}
 
-	public Table.TableSpace getTableSpace();
-
-	public Type getPropertyType(String propertyName);
-
-	public Table locateReusablePropertyJoinedTable(String propertyName);
-	public void registerReusablePropertyJoinedTable(String propertyName, Table table);
+	public PathResolutionStrategy getCurrent() {
+		return stack.getFirst();
+	}
 }
