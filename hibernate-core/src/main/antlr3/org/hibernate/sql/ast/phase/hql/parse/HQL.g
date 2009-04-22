@@ -814,8 +814,8 @@ likeEscape
 inList
 	:	collectionExpression
 		-> ^(IN_LIST collectionExpression)
-	|	LEFT_PAREN ( expression (COMMA expression)* | subQuery ) RIGHT_PAREN
-		-> ^(IN_LIST expression* subQuery?)
+	|	LEFT_PAREN ( {((validateIdentifierKey("select")|validateIdentifierKey("from")))}?=> subQuery | concatenation (COMMA concatenation)* ) RIGHT_PAREN
+		-> ^(IN_LIST concatenation* subQuery?)
 	;
 
 betweenList
@@ -1090,7 +1090,7 @@ atom
 	|	constant
 	|	parameterSpecification { if (enableParameterUsage.peek().equals(Boolean.FALSE)) throw new RecognitionException( ); }
 	//validate using Scopes if it is enabled or not to use parameterSpecification.. if not generate an exception 
-	|	LEFT_PAREN! (expressionOrVector | subQuery) RIGHT_PAREN!
+	|	LEFT_PAREN! ({((validateIdentifierKey("select")|validateIdentifierKey("from")))}?=> subQuery|expressionOrVector) RIGHT_PAREN!
 	;
 
 parameterSpecification
