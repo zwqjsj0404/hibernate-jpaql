@@ -93,7 +93,7 @@ public class RootPersisterSpaceContext implements PersisterSpaceContext {
 		log.trace( "attempting to resolve [" + propertyName + "] as unqualified property" );
 		PersisterSpace match = null;
 		for ( PersisterSpace persisterSpace : persisterSpaces ) {
-			if ( persisterSpace.contansProperty( propertyName ) ) {
+			if ( persisterSpace.containsProperty( propertyName ) ) {
 				if ( match != null ) {
 					// todo : better exception type
 					throw new QueryException( "multiple persisters contained property [" + propertyName + "]" );
