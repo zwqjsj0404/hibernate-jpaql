@@ -29,6 +29,9 @@
 
 package org.hibernate.sql.ast.phase.hql.resolve;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.hibernate.persister.MappedTableMetadata;
 import org.hibernate.persister.collection.QueryableCollection;
 import org.hibernate.persister.entity.Queryable;
@@ -36,6 +39,7 @@ import org.hibernate.sql.ast.alias.TableAliasGenerator;
 import org.hibernate.sql.ast.common.HibernateTree;
 import org.hibernate.sql.ast.phase.hql.parse.HQLParser;
 import org.hibernate.sql.ast.tree.Table;
+import org.hibernate.sql.ast.util.TreePrinter;
 
 /**
  * Generate table expressions for persisters.
@@ -45,6 +49,7 @@ import org.hibernate.sql.ast.tree.Table;
  * @author Steve Ebersole
  */
 public abstract class PersisterTableExpressionGenerator {
+	private static final Logger log = LoggerFactory.getLogger( PersisterTableExpressionGenerator.class );
 
 	public static Table generateTableExpression(
 			Queryable persister,
@@ -83,6 +88,11 @@ public abstract class PersisterTableExpressionGenerator {
 			);
 			on.addChild( joinCondition );
 		}
+
+		// todo : temporary...
+		System.out.println(
+				new TreePrinter( HQLParser.class ).renderAsString( drivingTable, "Generated table space" )
+		);
 
 		return drivingTable;
 	}
@@ -139,9 +149,7 @@ public abstract class PersisterTableExpressionGenerator {
 	}
 
 	private static Table generateTableReference(String tableName, String tableAlias, Table.TableSpace tableSpace) {
-		Table table = new Table( HQLParser.TABLE, tableSpace );
-		table.addChild( new HibernateTree( HQLParser.IDENTIFIER, tableName ) );
-		table.addChild( new HibernateTree( HQLParser.ALIAS_NAME, tableAlias ) );
+		Table table = new Table( tableName, tableAlias, tableSpace );
 		return table;
 	}
 

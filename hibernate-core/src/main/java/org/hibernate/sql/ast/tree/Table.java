@@ -32,18 +32,18 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.HashMap;
 
-import org.antlr.runtime.Token;
-
 import org.hibernate.type.Type;
-import org.hibernate.sql.ast.alias.ImplicitAliasGenerator;
+import org.hibernate.sql.ast.alias.TableAliasGenerator;
 import org.hibernate.sql.ast.common.HibernateTree;
 import org.hibernate.sql.ast.common.HibernateToken;
 import org.hibernate.sql.ast.util.DisplayableNode;
 import org.hibernate.sql.ast.phase.hql.parse.HQLParser;
 import org.hibernate.sql.ast.phase.hql.resolve.PersisterSpace;
+import org.hibernate.sql.ast.phase.hql.resolve.PersisterTableExpressionGenerator;
 import org.hibernate.persister.entity.Queryable;
 import org.hibernate.persister.collection.QueryableCollection;
 import org.hibernate.util.StringHelper;
+import org.hibernate.QueryException;
 
 /**
  * todo : javadocs
@@ -53,18 +53,12 @@ import org.hibernate.util.StringHelper;
 public class Table extends HibernateTree implements DisplayableNode {
 	private final TableSpace tableSpace;
 
-	public Table(Token token, TableSpace tableSpace) {
-		super( token );
+	public Table(String tableName, String tableAlias, TableSpace tableSpace) {
+		super( new HibernateToken( HQLParser.TABLE ) );
+		addChild( new HibernateTree( HQLParser.IDENTIFIER, tableName ) );
+		addChild( new HibernateTree( HQLParser.ALIAS_NAME, tableAlias ) );
 		this.tableSpace = tableSpace;
 		tableSpace.addTable( this );
-	}
-
-	public Table(HibernateTree node, TableSpace tableSpace) {
-		this( node.getToken(), tableSpace );
-	}
-
-	public Table(int tokenType, TableSpace tableSpace) {
-		this( new HibernateToken( tokenType ), tableSpace );
 	}
 
 	public TableSpace getTableSpace() {
@@ -144,23 +138,17 @@ public class Table extends HibernateTree implements DisplayableNode {
 	}
 
 	public static abstract class AbstractTableSpace implements Table.TableSpace {
-		private final String sourceAlias;
-		private final boolean implicitSourceAlias;
+		private final TableAliasGenerator.TableAliasRoot aliasRoot;
 		protected final LinkedHashSet<Table> tables = new LinkedHashSet<Table>();
 		protected final HashMap<String,Table> aliasToTableMap = new HashMap<String,Table>();
 		protected final HashMap<String,Table> nameToTableMap = new HashMap<String,Table>();
 
-		private AbstractTableSpace(String sourceAlias) {
-			this.sourceAlias = sourceAlias;
-			this.implicitSourceAlias = ImplicitAliasGenerator.isImplicitAlias( sourceAlias );
+		private AbstractTableSpace(TableAliasGenerator.TableAliasRoot aliasRoot) {
+			this.aliasRoot = aliasRoot;
 		}
 
 		public String getSourceAlias() {
-			return sourceAlias;
-		}
-
-		public String getSqlAliasBaseRoot() {
-			return implicitSourceAlias ? getPersisterSpace().getShortName() : sourceAlias;
+			return aliasRoot.getBase();
 		}
 
 		public void addTable(Table table) {
@@ -181,8 +169,13 @@ public class Table extends HibernateTree implements DisplayableNode {
 			propertyToJoinedTableMap.put( propertyName, table );
 		}
 
-		public boolean contansProperty(String propertyName) {
-			return getPropertyType( propertyName ) != null;
+		public boolean containsProperty(String propertyName) {
+			try {
+				return getPropertyType( propertyName ) != null;
+			}
+			catch ( QueryException qe ) {
+				return false;
+			}
 		}
 	}
 
@@ -190,12 +183,18 @@ public class Table extends HibernateTree implements DisplayableNode {
 		private final EntityPersisterSpace persisterSpace;
 		private final ArrayList tables;
 
-		public EntityTableSpace(Queryable entityPersister, String sourecAlias) {
-			super( sourecAlias );
+		public EntityTableSpace(Queryable entityPersister, TableAliasGenerator.TableAliasRoot aliasRoot) {
+			super( aliasRoot );
 			this.persisterSpace = new EntityPersisterSpace( this, entityPersister );
 			int numberOfTables = entityPersister.getMappedTableMetadata().getJoinedTables().length + 1;
 			int listSize = numberOfTables + (int) ( numberOfTables * .75 ) + 1;
 			this.tables = new ArrayList( listSize );
+
+			PersisterTableExpressionGenerator.generateTableExpression(
+					entityPersister,
+					aliasRoot,
+					this
+			);
 		}
 
 		public PersisterSpace getPersisterSpace() {
@@ -291,11 +290,11 @@ public class Table extends HibernateTree implements DisplayableNode {
 		private Table collectionTable;
 		private EntityTableSpace entityElementTableSpace;
 
-		public CollectionTableSpace(QueryableCollection persister, String sourceAlias) {
-			super( sourceAlias );
+		public CollectionTableSpace(QueryableCollection persister, TableAliasGenerator.TableAliasRoot aliasRoot) {
+			super( aliasRoot );
 			this.persisterSpace = new CollectionPersisterSpace( this, persister );
 			if ( persisterSpace.areElementsEntities ) {
-				entityElementTableSpace = new EntityTableSpace( ( Queryable ) persister.getElementPersister(), sourceAlias );
+				entityElementTableSpace = new EntityTableSpace( ( Queryable ) persister.getElementPersister(), aliasRoot );
 			}
 		}
 

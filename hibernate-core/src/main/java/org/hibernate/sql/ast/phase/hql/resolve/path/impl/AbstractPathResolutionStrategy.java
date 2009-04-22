@@ -471,15 +471,10 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 	protected Table createJoin(PersisterSpace lhs, Queryable entityPersister, String alias) {
 		EntityType entityType = entityPersister.getEntityMetamodel().getEntityType();
 
-		Table.EntityTableSpace tableSpace = new Table.EntityTableSpace( entityPersister, alias );
 		TableAliasGenerator.TableAliasRoot tableAliasRoot = resolutionContext().getTableAliasGenerator()
 				.generateSqlAliasRoot( entityPersister, alias );
-
-		Table joinedTableExpression = PersisterTableExpressionGenerator.generateTableExpression(
-				entityPersister,
-				tableAliasRoot,
-				tableSpace
-		);
+		Table.EntityTableSpace tableSpace = new Table.EntityTableSpace( entityPersister, tableAliasRoot );
+		Table joinedTableExpression = tableSpace.getDrivingTable();
 
 		HibernateTree join = new HibernateTree( HQLParser.JOIN );
 		join.addChild( buildJoinTypeNode() );
@@ -516,9 +511,9 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 	protected Table createJoin(PersisterSpace lhs, QueryableCollection collectionPersister, String sourceAlias, HibernateTree extraJoinConditions) {
 		CollectionType collectionType = collectionPersister.getCollectionType();
 
-		Table.CollectionTableSpace tableSpace = new Table.CollectionTableSpace( collectionPersister, sourceAlias );
 		TableAliasGenerator.TableAliasRoot tableAliasRoot = resolutionContext().getTableAliasGenerator()
 				.generateSqlAliasRoot( collectionPersister, sourceAlias );
+		Table.CollectionTableSpace tableSpace = new Table.CollectionTableSpace( collectionPersister, tableAliasRoot );
 
 		Table collectionTableExpression = PersisterTableExpressionGenerator.generateTableExpression(
 				collectionPersister,

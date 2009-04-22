@@ -43,6 +43,10 @@ public interface TableAliasGenerator {
 			this.base = base;
 		}
 
+		public String getBase() {
+			return base;
+		}
+
 		/**
 		 * Generate the sql alias based on the given suffix which is the <i>subclass table number</i>.
 		 *
