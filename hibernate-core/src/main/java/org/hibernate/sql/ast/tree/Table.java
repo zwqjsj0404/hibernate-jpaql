@@ -148,7 +148,7 @@ public class Table extends HibernateTree implements DisplayableNode {
 		}
 
 		public String getSourceAlias() {
-			return aliasRoot.getBase();
+			return aliasRoot.getSource();
 		}
 
 		public void addTable(Table table) {

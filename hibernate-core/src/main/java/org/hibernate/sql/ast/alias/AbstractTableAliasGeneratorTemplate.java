@@ -99,9 +99,10 @@ public abstract class AbstractTableAliasGeneratorTemplate implements TableAliasG
 	}
 
 	protected final TableAliasRoot generateSqlAliasRoot(String base, int tableCount) {
+		String source = base;
 		base = cleanBase( base );
 		base = ensureAliasCapacity( base, tableCount );
-		return new TableAliasRoot( base );
+		return new TableAliasRoot( source, base );
 	}
 
 	private String cleanBase(String base) {

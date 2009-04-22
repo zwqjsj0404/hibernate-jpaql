@@ -37,10 +37,16 @@ public interface TableAliasGenerator {
 	 * Encapsulation of the alias root.
 	 */
 	public static class TableAliasRoot {
+		private final String source;
 		private final String base;
 
-		public TableAliasRoot(String base) {
+		public TableAliasRoot(String source, String base) {
+			this.source = source;
 			this.base = base;
+		}
+
+		public String getSource() {
+			return source;
 		}
 
 		public String getBase() {
