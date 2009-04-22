@@ -23,6 +23,9 @@
  */
 package org.hibernate.sql.ast.alias;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.hibernate.persister.collection.QueryableCollection;
 import org.hibernate.persister.entity.Queryable;
 
@@ -34,21 +37,41 @@ import org.hibernate.persister.entity.Queryable;
  */
 public interface TableAliasGenerator {
 	/**
-	 * Encapsulation of the alias root.
+	 * Encapsulation of the alias root, which is a template for creating a series of "related" SQL aliases (for
+	 * a given persister e.g.).
 	 */
 	public static class TableAliasRoot {
+		private static final Logger log = LoggerFactory.getLogger( TableAliasRoot.class );
+
 		private final String source;
 		private final String base;
 
+		/**
+		 * Create the alias root.
+		 *
+		 * @param source The original alias from the source query.
+		 * @param base The base used to generate SQL aliases.
+		 */
 		public TableAliasRoot(String source, String base) {
+			log.trace( "Creating alias root [" + source + " -> " + base + "]" );
 			this.source = source;
 			this.base = base;
 		}
 
+		/**
+		 * Retrieve the original alias from the source query.
+		 *
+		 * @return The source alias.
+		 */
 		public String getSource() {
 			return source;
 		}
 
+		/**
+		 * Retrieve the base used to generate SQL aliases.
+		 *
+		 * @return The SQL alias base.
+		 */
 		public String getBase() {
 			return base;
 		}
