@@ -48,59 +48,64 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSourc
 @members{
     protected void registerPersisterSpace(CommonTree entityName,
                                        CommonTree alias) {
+        throw new UnsupportedOperationException( "must be overridden!" );
     }
     
 	protected boolean isUnqualifiedPropertyReference() {
-		return false;
+        throw new UnsupportedOperationException( "must be overridden!" );
 	}	
 
 	protected Tree normalizeUnqualifiedPropertyReference(CommonTree property) {
-		return null;
+        throw new UnsupportedOperationException( "must be overridden!" );
 	}
 	
 	protected boolean isPersisterReferenceAlias() {
-        return false;
+        throw new UnsupportedOperationException( "must be overridden!" );
     }
 
     protected PathedPropertyReferenceSource normalizeUnqualifiedRoot( CommonTree identifier382 ) {
-		// TODO Auto-generated method stub
-		return null;
+        throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
 	protected PathedPropertyReferenceSource normalizeQualifiedRoot( CommonTree identifier381 ) {
-		// TODO Auto-generated method stub
-		return null;
+        throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
-    protected void normalizePropertyPathIntermediary( CommonTree commonTree,
-			CommonTree identifier387 ) {
-		// TODO Auto-generated method stub
+    protected PathedPropertyReferenceSource normalizePropertyPathIntermediary( PathedPropertyReferenceSource source, CommonTree propertyName ) {
+        throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
     protected void normalizeIntermediateIndexOperation( CommonTree commonTree,
 			CommonTree commonTree2 ) {
-		// TODO Auto-generated method stub	
+        throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
     protected void normalizeUnqualifiedPropertyReferenceSource(
 			CommonTree identifier394 ) {
-		// TODO Auto-generated method stub    		
+        throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
     protected void normalizeTerminalIndexOperation(CommonTree collectionPath, CommonTree selector) {
-		// TODO Auto-generated method stub    		
+        throw new UnsupportedOperationException( "must be overridden!" );
     }
 
     protected void normalizePropertyPathTerminus(PathedPropertyReferenceSource source, CommonTree propertyNameNode) {
-		// TODO Auto-generated method stub    		
+        throw new UnsupportedOperationException( "must be overridden!" );
     }
 
 	protected void pushFromStrategy( JoinType joinType,
 			CommonTree assosiationFetchTree, CommonTree propertyFetchTree,
 			CommonTree alias ) {
+        throw new UnsupportedOperationException( "must be overridden!" );
 	}
+	
+	protected void pushSelectStrategy() {
+        throw new UnsupportedOperationException( "must be overridden!" );
+	}
+	
 
 	protected void popStrategy(){
+        throw new UnsupportedOperationException( "must be overridden!" );
 	}
 }
 
@@ -227,6 +232,8 @@ joinType returns [JoinType joinType]
 	;
 
 selectClause
+@init	{	if (state.backtracking == 0) pushSelectStrategy();	}
+@after	{	popStrategy();	}
 	:	^(SELECT DISTINCT? rootSelectExpression) 
 	;
 
@@ -336,7 +343,7 @@ valueExpressionPrimary
 	|	^(DOT_CLASS path) // crazy 
 	|	^(GENERAL_FUNCTION_CALL path)
 	|	^(JAVA_CONSTANT path) //It will generate at SQL a parameter element (?) -> 'cos we do not need to care about char escaping
-	|	^(PATH path)
+	|	^(PATH propertyReferencePath)
 	;
 
 caseExpression
@@ -577,13 +584,13 @@ pathedPropertyReference
 pathedPropertyReferenceSource returns [PathedPropertyReferenceSource propertyReferenceSource]
 	:	{(isPersisterReferenceAlias())}?=> IDENTIFIER { $propertyReferenceSource = normalizeQualifiedRoot( $IDENTIFIER ); }
     |	{(isUnqualifiedPropertyReference())}?=> IDENTIFIER { $propertyReferenceSource = normalizeUnqualifiedRoot( $IDENTIFIER ); }
-    |	intermediatePathedPropertyReference
-    |	intermediateIndexOperation
+    |	intermediatePathedPropertyReference { $propertyReferenceSource = $intermediatePathedPropertyReference.propertyReferenceSource; }
+    |	intermediateIndexOperation { $propertyReferenceSource = null; }
     ;
 
-intermediatePathedPropertyReference
-	:	^(DOT pathedPropertyReferenceSource IDENTIFIER )
-	{	normalizePropertyPathIntermediary( $pathedPropertyReferenceSource.tree, $IDENTIFIER );	}
+intermediatePathedPropertyReference returns [PathedPropertyReferenceSource propertyReferenceSource]
+	:	^(DOT source=pathedPropertyReferenceSource IDENTIFIER )
+	{	$propertyReferenceSource = normalizePropertyPathIntermediary( $pathedPropertyReferenceSource.propertyReferenceSource, $IDENTIFIER );	}
 	;
 
 intermediateIndexOperation

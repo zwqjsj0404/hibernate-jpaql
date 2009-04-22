@@ -44,7 +44,7 @@ public class TestHQLResolver extends TestCase {
 	}
 
 	public void testBasicSelectStructure() throws Throwable {
-		Tree queryTree = normalize( "from Animal as a inner join a.mother" );
+		Tree queryTree = normalize( "select a.id from Animal a" );
 	}
 
 	public Tree normalize( String hql ) throws RecognitionException {

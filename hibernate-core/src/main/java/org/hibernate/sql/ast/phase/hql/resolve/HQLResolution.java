@@ -36,6 +36,7 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathResolutionStrategyStack;
 import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSource;
 import org.hibernate.sql.ast.phase.hql.resolve.path.impl.BasicPathResolutionStrategySupport;
 import org.hibernate.sql.ast.phase.hql.resolve.path.impl.FromClausePathResolutionStrategy;
+import org.hibernate.sql.ast.phase.hql.resolve.path.impl.SelectClausePathResolutionStrategy;
 import org.hibernate.sql.ast.tree.Table;
 import org.hibernate.sql.ast.tree.Table.EntityTableSpace;
 import org.hibernate.sql.ast.util.TreePrinter;
@@ -134,6 +135,11 @@ public class HQLResolution extends GeneratedHQLResolution implements
 						.getText() ) );
 	}
 
+	protected void pushSelectStrategy() {
+		pathResolutionStrategyStack
+				.push( new SelectClausePathResolutionStrategy( this ) );
+	}
+
 	protected void popStrategy() {
 		pathResolutionStrategyStack.pop();
 	}
@@ -206,11 +212,13 @@ public class HQLResolution extends GeneratedHQLResolution implements
 				propertyNameNode.getText() );
 	}
 
-	protected void normalizePropertyPathIntermediary( CommonTree identifier1,
-			CommonTree identifier2 ) {
-		System.out.println( "normalizePropertyPathIntermediary: "
-				+ identifier1.getText() + ":" + identifier2.getText() );
-		// TODO Auto-generated method stub
+	protected PathedPropertyReferenceSource normalizePropertyPathIntermediary(
+			PathedPropertyReferenceSource source, CommonTree propertyName ) {
+		log.trace( "normalizing intermediate path expression ["
+				+ textOrNull( propertyName ) + "]" );
+		return getCurrentPathResolutionStrategy().handleIntermediatePathPart(
+				( PathedPropertyReferenceSource ) source,
+				propertyName.getText() );
 	}
 
 	protected void normalizeIntermediateIndexOperation( CommonTree identifier1,
