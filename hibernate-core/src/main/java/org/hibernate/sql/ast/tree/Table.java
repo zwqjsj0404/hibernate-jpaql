@@ -37,7 +37,7 @@ import org.hibernate.sql.ast.alias.TableAliasGenerator;
 import org.hibernate.sql.ast.common.HibernateTree;
 import org.hibernate.sql.ast.common.HibernateToken;
 import org.hibernate.sql.ast.util.DisplayableNode;
-import org.hibernate.sql.ast.phase.hql.parse.HQLParser;
+import org.hibernate.sql.ast.phase.hql.parse.HQLLexer;
 import org.hibernate.sql.ast.phase.hql.resolve.PersisterSpace;
 import org.hibernate.sql.ast.phase.hql.resolve.PersisterTableExpressionGenerator;
 import org.hibernate.persister.entity.Queryable;
@@ -54,9 +54,9 @@ public class Table extends HibernateTree implements DisplayableNode {
 	private final TableSpace tableSpace;
 
 	public Table(String tableName, String tableAlias, TableSpace tableSpace) {
-		super( new HibernateToken( HQLParser.TABLE ) );
-		addChild( new HibernateTree( HQLParser.IDENTIFIER, tableName ) );
-		addChild( new HibernateTree( HQLParser.ALIAS_NAME, tableAlias ) );
+		super( new HibernateToken( HQLLexer.TABLE ) );
+		addChild( new HibernateTree( HQLLexer.IDENTIFIER, tableName ) );
+		addChild( new HibernateTree( HQLLexer.ALIAS_NAME, tableAlias ) );
 		this.tableSpace = tableSpace;
 		tableSpace.addTable( this );
 	}
@@ -232,11 +232,11 @@ public class Table extends HibernateTree implements DisplayableNode {
 		}
 
 		public HibernateTree buildIdentifierColumnReferences() {
-			HibernateTree columnList = new HibernateTree( HQLParser.COLUMN_LIST );
+			HibernateTree columnList = new HibernateTree( HQLLexer.COLUMN_LIST );
 			for ( String columnName : getEntityPersister().getIdentifierColumnNames() ) {
-				HibernateTree columnNode = new HibernateTree( HQLParser.COLUMN );
-				columnNode.addChild( new HibernateTree( HQLParser.ALIAS_REF, getDrivingTable().getAliasText() ) );
-				columnNode.addChild( new HibernateTree( HQLParser.IDENTIFIER, columnName ) );
+				HibernateTree columnNode = new HibernateTree( HQLLexer.COLUMN );
+				columnNode.addChild( new HibernateTree( HQLLexer.ALIAS_REF, getDrivingTable().getAliasText() ) );
+				columnNode.addChild( new HibernateTree( HQLLexer.IDENTIFIER, columnName ) );
 				columnList.addChild( columnNode );
 			}
 			return columnList;

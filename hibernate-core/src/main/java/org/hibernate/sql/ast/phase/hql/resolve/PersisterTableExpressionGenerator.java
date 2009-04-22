@@ -29,15 +29,12 @@
 
 package org.hibernate.sql.ast.phase.hql.resolve;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.hibernate.persister.MappedTableMetadata;
 import org.hibernate.persister.collection.QueryableCollection;
 import org.hibernate.persister.entity.Queryable;
 import org.hibernate.sql.ast.alias.TableAliasGenerator;
 import org.hibernate.sql.ast.common.HibernateTree;
-import org.hibernate.sql.ast.phase.hql.parse.HQLParser;
+import org.hibernate.sql.ast.phase.hql.parse.HQLLexer;
 import org.hibernate.sql.ast.tree.Table;
 import org.hibernate.sql.ast.util.TreePrinter;
 
@@ -49,8 +46,15 @@ import org.hibernate.sql.ast.util.TreePrinter;
  * @author Steve Ebersole
  */
 public abstract class PersisterTableExpressionGenerator {
-	private static final Logger log = LoggerFactory.getLogger( PersisterTableExpressionGenerator.class );
-
+	/**
+	 * Generate the table expression for the given entity persister.
+	 *
+	 * @param persister The entity persister.
+	 * @param aliasRoot The alias root for SQL alias generation.
+	 * @param tableSpace The table space to which any generated table references need to belong.
+	 *
+	 * @return The generated table expression (could be simply the root table in a joined table structure).
+	 */
 	public static Table generateTableExpression(
 			Queryable persister,
 			TableAliasGenerator.TableAliasRoot aliasRoot,
@@ -68,17 +72,17 @@ public abstract class PersisterTableExpressionGenerator {
 			final String joinTableAlias = aliasRoot.generate( ++suffix );
 			final Table table = generateTableReference( joinedTable.getName(), joinTableAlias, tableSpace );
 
-			final HibernateTree join = new HibernateTree( HQLParser.JOIN, "join" );
+			final HibernateTree join = new HibernateTree( HQLLexer.JOIN, "join" );
 			drivingTable.addChild( join );
 			if ( joinedTable.useInnerJoin() ) {
-				join.addChild( new HibernateTree( HQLParser.INNER, "inner" ) );
+				join.addChild( new HibernateTree( HQLLexer.INNER, "inner" ) );
 			}
 			else {
-				join.addChild( new HibernateTree( HQLParser.LEFT, "left outer" ) );
+				join.addChild( new HibernateTree( HQLLexer.LEFT, "left outer" ) );
 			}
 			join.addChild( table );
 
-			final HibernateTree on = new HibernateTree( HQLParser.ON, "on" );
+			final HibernateTree on = new HibernateTree( HQLLexer.ON, "on" );
 			join.addChild( on );
 			final HibernateTree joinCondition = generateJoinCorrelation(
 					drivingTableAlias,
@@ -91,12 +95,21 @@ public abstract class PersisterTableExpressionGenerator {
 
 		// todo : temporary...
 		System.out.println(
-				new TreePrinter( HQLParser.class ).renderAsString( drivingTable, "Generated table space" )
+				new TreePrinter( HQLLexer.class ).renderAsString( drivingTable, "Generated table space" )
 		);
 
 		return drivingTable;
 	}
 
+	/**
+	 * Generate the table expression for the given collection persister.
+	 *
+	 * @param collectionPersister The collection persister
+	 * @param aliasRoot The alias root for SQL alias generation.
+	 * @param tableSpace The table space to which any generated table references need to belong.
+	 *
+	 * @return The generated table expression (could be simply the root table in a joined table structure).
+	 */
 	public static Table generateTableExpression(
 			QueryableCollection collectionPersister,
 			TableAliasGenerator.TableAliasRoot aliasRoot,
@@ -126,15 +139,15 @@ public abstract class PersisterTableExpressionGenerator {
 						tableSpace.getEntityElementTableSpace()
 				);
 
-				final HibernateTree join = new HibernateTree( HQLParser.JOIN );
+				final HibernateTree join = new HibernateTree( HQLLexer.JOIN );
 				associationTable.addChild( join );
-				join.addChild( new HibernateTree( HQLParser.LEFT, "left outer" ) );
+				join.addChild( new HibernateTree( HQLLexer.LEFT, "left outer" ) );
 				join.addChild( drivingTable );
 
 				String[] entityFkColumnNames = collectionPersister.getElementColumnNames();
 				String[] entityPkColumnNames = elementPersister.getKeyColumnNames();
 
-				final HibernateTree on = new HibernateTree( HQLParser.ON );
+				final HibernateTree on = new HibernateTree( HQLLexer.ON );
 				join.addChild( on );
 				final HibernateTree joinCondition = generateJoinCorrelation(
 						associationTable.getAliasText(),
@@ -149,10 +162,19 @@ public abstract class PersisterTableExpressionGenerator {
 	}
 
 	private static Table generateTableReference(String tableName, String tableAlias, Table.TableSpace tableSpace) {
-		Table table = new Table( tableName, tableAlias, tableSpace );
-		return table;
+		return new Table( tableName, tableAlias, tableSpace );
 	}
 
+	/**
+	 * Creates a join correlation subtree (AST representing all the conditions on which the join occurs).
+	 *
+	 * @param lhsAlias The alias for the left-hand side (LHS) of the join
+	 * @param lhsColumns The LHS columns
+	 * @param rhsAlias The alias for the right-hand side (RHS) of the join
+	 * @param rhsColumns The RHS columns
+	 *
+	 * @return The join correlation AST.
+	 */
 	public static HibernateTree generateJoinCorrelation(
 			String lhsAlias,
 			String[] lhsColumns,
@@ -162,7 +184,7 @@ public abstract class PersisterTableExpressionGenerator {
 		if ( lhsColumns.length > 1 ) {
 			for ( int i = 1; i < lhsColumns.length; i++ ) {
 				HibernateTree previous = correlation;
-				correlation = new HibernateTree( HQLParser.AND, "and" );
+				correlation = new HibernateTree( HQLLexer.AND, "and" );
 				correlation.addChild( previous );
 				correlation.addChild( generateJoinCorrelation( lhsAlias, lhsColumns[i], rhsAlias, rhsColumns[i] ) );
 			}
@@ -170,16 +192,26 @@ public abstract class PersisterTableExpressionGenerator {
 		return correlation;
 	}
 
+	/**
+	 * Creates a join correlation subtree.  The difference here is that we have just a single column on each side.
+	 *
+	 * @param lhsAlias The alias for the left-hand side (LHS) of the join
+	 * @param lhsColumn The LHS column
+	 * @param rhsAlias The alias for the right-hand side (RHS) of the join
+	 * @param rhsColumn The RHS column
+	 *
+	 * @return The join correlation AST.
+	 */
 	public static HibernateTree generateJoinCorrelation(String lhsAlias, String lhsColumn, String rhsAlias, String rhsColumn) {
-		HibernateTree lhs = new HibernateTree( HQLParser.COLUMN );
-		lhs.addChild( new HibernateTree( HQLParser.ALIAS_REF, lhsAlias ) );
-		lhs.addChild( new HibernateTree( HQLParser.IDENTIFIER, lhsColumn ) );
+		HibernateTree lhs = new HibernateTree( HQLLexer.COLUMN );
+		lhs.addChild( new HibernateTree( HQLLexer.ALIAS_REF, lhsAlias ) );
+		lhs.addChild( new HibernateTree( HQLLexer.IDENTIFIER, lhsColumn ) );
 
-		HibernateTree rhs = new HibernateTree( HQLParser.COLUMN );
-		rhs.addChild( new HibernateTree( HQLParser.ALIAS_REF, rhsAlias ) );
-		rhs.addChild( new HibernateTree( HQLParser.IDENTIFIER, rhsColumn ) );
+		HibernateTree rhs = new HibernateTree( HQLLexer.COLUMN );
+		rhs.addChild( new HibernateTree( HQLLexer.ALIAS_REF, rhsAlias ) );
+		rhs.addChild( new HibernateTree( HQLLexer.IDENTIFIER, rhsColumn ) );
 
-		HibernateTree correlation = new HibernateTree( HQLParser.EQUALS, "=" );
+		HibernateTree correlation = new HibernateTree( HQLLexer.EQUALS, "=" );
 		correlation.addChild( lhs );
 		correlation.addChild( rhs );
 

@@ -31,7 +31,7 @@ package org.hibernate.sql.ast.phase.hql.resolve.path.impl;
 import org.hibernate.QueryException;
 import org.hibernate.sql.ast.common.HibernateTree;
 import org.hibernate.sql.ast.common.JoinType;
-import org.hibernate.sql.ast.phase.hql.parse.HQLParser;
+import org.hibernate.sql.ast.phase.hql.parse.HQLLexer;
 import org.hibernate.sql.ast.phase.hql.resolve.PersisterSpace;
 import org.hibernate.sql.ast.phase.hql.resolve.ResolutionContext;
 import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSource;
@@ -107,13 +107,13 @@ public class FromClausePathResolutionStrategy extends AbstractPathResolutionStra
 
 	protected HibernateTree buildJoinTypeNode() {
 		if ( joinType == JoinType.INNER ) {
-			return new HibernateTree( HQLParser.INNER );
+			return new HibernateTree( HQLLexer.INNER );
 		}
 		else if ( joinType == JoinType.LEFT ) {
-			return new HibernateTree( HQLParser.LEFT );
+			return new HibernateTree( HQLLexer.LEFT );
 		}
 		else if ( joinType == JoinType.RIGHT ) {
-			return new HibernateTree( HQLParser.RIGHT );
+			return new HibernateTree( HQLLexer.RIGHT );
 		}
 		// if no match found, throw exception
 		throw new QueryException( "Unrecognized join type [" + joinType.toString() + "]" );

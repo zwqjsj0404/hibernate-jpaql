@@ -38,6 +38,7 @@ import org.hibernate.sql.ast.alias.TableAliasGenerator;
 import org.hibernate.sql.ast.common.HibernateToken;
 import org.hibernate.sql.ast.common.HibernateTree;
 import org.hibernate.sql.ast.phase.hql.parse.HQLParser;
+import org.hibernate.sql.ast.phase.hql.parse.HQLLexer;
 import org.hibernate.sql.ast.phase.hql.resolve.PersisterSpace;
 import org.hibernate.sql.ast.phase.hql.resolve.PersisterTableExpressionGenerator;
 import org.hibernate.sql.ast.phase.hql.resolve.ResolutionContext;
@@ -270,7 +271,7 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 	 * @return The join type node.
 	 */
 	protected HibernateTree buildJoinTypeNode() {
-		return createNode( HQLParser.INNER, "inner" );
+		return createNode( HQLLexer.INNER, "inner" );
 	}
 
 	/**
@@ -369,13 +370,13 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 	 * @return The column list.
 	 */
 	protected final HibernateTree generatePropertyColumnList(PersisterSpace origin, String propertyName) {
-		HibernateTree columnList = new HibernateTree( HQLParser.COLUMN_LIST );
+		HibernateTree columnList = new HibernateTree( HQLLexer.COLUMN_LIST );
 		Table containingTable = origin.getTableSpace().getContainingTable( propertyName );
 		for ( String columnName : origin.getTableSpace().getPropertyColumnNames( propertyName ) ) {
-			final HibernateTree column = new HibernateTree( HQLParser.COLUMN );
+			final HibernateTree column = new HibernateTree( HQLLexer.COLUMN );
 			columnList.addChild( column );
-			column.addChild( new HibernateTree( HQLParser.ALIAS_REF, containingTable.getAliasText() ) );
-			column.addChild( new HibernateTree( HQLParser.IDENTIFIER, columnName ) );
+			column.addChild( new HibernateTree( HQLLexer.ALIAS_REF, containingTable.getAliasText() ) );
+			column.addChild( new HibernateTree( HQLLexer.IDENTIFIER, columnName ) );
 		}
 		return columnList;
 	}
@@ -400,7 +401,7 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 		}
 
 		protected AbstractPathedPropertyReferenceSource(String originationPath) {
-			super( new HibernateToken( HQLParser.IDENTIFIER, originationPath ) );
+			super( new HibernateToken( HQLLexer.IDENTIFIER, originationPath ) );
 			this.originationPath = originationPath;
 		}
 
@@ -414,11 +415,11 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 
 			// in general we need the collection element column list
 			QueryableCollection collectionPersister = resolveCollectionPersister( lhs, collectionPropertyName );
-			HibernateTree columnList = new HibernateTree( HQLParser.COLUMN_LIST );
+			HibernateTree columnList = new HibernateTree( HQLLexer.COLUMN_LIST );
 			for ( String columnName : collectionPersister.getElementColumnNames() ) {
-				final HibernateTree column = new HibernateTree( HQLParser.COLUMN );
-				column.addChild( new HibernateTree( HQLParser.ALIAS_REF, joinedCollectionTable.getAliasText() ) );
-				column.addChild( new HibernateTree( HQLParser.IDENTIFIER, columnName ) );
+				final HibernateTree column = new HibernateTree( HQLLexer.COLUMN );
+				column.addChild( new HibernateTree( HQLLexer.ALIAS_REF, joinedCollectionTable.getAliasText() ) );
+				column.addChild( new HibernateTree( HQLLexer.IDENTIFIER, columnName ) );
 			}
 			return columnList;
 		}
@@ -476,7 +477,7 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 		Table.EntityTableSpace tableSpace = new Table.EntityTableSpace( entityPersister, tableAliasRoot );
 		Table joinedTableExpression = tableSpace.getDrivingTable();
 
-		HibernateTree join = new HibernateTree( HQLParser.JOIN );
+		HibernateTree join = new HibernateTree( HQLLexer.JOIN );
 		join.addChild( buildJoinTypeNode() );
 		join.addChild( joinedTableExpression );
 
@@ -501,7 +502,7 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 			);
 		}
 
-		HibernateTree on = new HibernateTree( HQLParser.ON );
+		HibernateTree on = new HibernateTree( HQLLexer.ON );
 		join.addChild( on );
 		on.addChild( joinCondition );
 
@@ -521,7 +522,7 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 				tableSpace
 		);
 
-		HibernateTree joinNode = new HibernateTree( HQLParser.JOIN );
+		HibernateTree joinNode = new HibernateTree( HQLLexer.JOIN );
 		joinNode.addChild( buildJoinTypeNode() );
 		joinNode.addChild( collectionTableExpression );
 
@@ -548,12 +549,12 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 
 		if ( extraJoinConditions != null ) {
 			HibernateTree mappedJoinCondition = joinCondition;
-			joinCondition = new HibernateTree( HQLParser.AND );
+			joinCondition = new HibernateTree( HQLLexer.AND );
 			joinCondition.addChild( mappedJoinCondition );
 			joinCondition.addChild( extraJoinConditions );
 		}
 
-		HibernateTree on = new HibernateTree( HQLParser.ON );
+		HibernateTree on = new HibernateTree( HQLLexer.ON );
 		joinNode.addChild( on );
 		on.addChild( joinCondition );
 

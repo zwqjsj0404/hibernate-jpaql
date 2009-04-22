@@ -26,11 +26,10 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-
 package org.hibernate.sql.ast.phase.hql.resolve;
 
 /**
- * todo : javadocs
+ * The contract for defining a scoping for references to persisters.
  *
  * @author Steve Ebersole
  */
