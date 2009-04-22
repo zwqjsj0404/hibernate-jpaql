@@ -1,4 +1,4 @@
-tree grammar HQLTreeWalker;
+tree grammar GeneratedHQLResolution;
 
 options{
 	output=AST;
@@ -38,7 +38,62 @@ options{
  * with or without modification, you must preserve this copyright notice in its
  * entirety.
  */
-package org.hibernate.sql.ast.phase.hql.parse;
+package org.hibernate.sql.ast.phase.hql.resolve;
+
+import org.antlr.runtime.tree.CommonTree;
+import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSource;
+}
+
+@members{
+    protected void registerPersisterSpace(CommonTree entityName,
+                                       CommonTree alias) {
+    }
+    
+	protected boolean isUnqualifiedPropertyReference() {
+		return false;
+	}	
+
+	protected Tree normalizeUnqualifiedPropertyReference(CommonTree property) {
+		return null;
+	}
+	
+	protected boolean isPersisterReferenceAlias() {
+        return false;
+    }
+
+    protected PathedPropertyReferenceSource normalizeUnqualifiedRoot( CommonTree identifier382 ) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	protected PathedPropertyReferenceSource normalizeQualifiedRoot( CommonTree identifier381 ) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+    protected void normalizePropertyPathIntermediary( CommonTree commonTree,
+			CommonTree identifier387 ) {
+		// TODO Auto-generated method stub
+	}
+
+    protected void normalizeIntermediateIndexOperation( CommonTree commonTree,
+			CommonTree commonTree2 ) {
+		// TODO Auto-generated method stub	
+	}
+
+    protected void normalizeUnqualifiedPropertyReferenceSource(
+			CommonTree identifier394 ) {
+		// TODO Auto-generated method stub    		
+	}
+
+    protected void normalizeTerminalIndexOperation(CommonTree collectionPath, CommonTree selector) {
+		// TODO Auto-generated method stub    		
+    }
+
+    protected void normalizePropertyPathTerminus(PathedPropertyReferenceSource source, CommonTree propertyNameNode) {
+		// TODO Auto-generated method stub    		
+    }
+
 }
 
 filterStatement[String collectionRole]
@@ -267,10 +322,10 @@ valueExpressionPrimary
 	|	propertyReference
 	|	^(SUB_QUERY queryStatementSet)
 	|	ALIAS_REF //ID COLUMN, full property column list 
-	|	^(DOT_CLASS identPrimary) // crazy 
-	|	^(GENERAL_FUNCTION_CALL identPrimary)
-	|	^(JAVA_CONSTANT identPrimary) //It will generate at SQL a parameter element (?) -> 'cos we do not need to care about char escaping
-	|	^(PATH identPrimary)
+	|	^(DOT_CLASS path) // crazy 
+	|	^(GENERAL_FUNCTION_CALL path)
+	|	^(JAVA_CONSTANT path) //It will generate at SQL a parameter element (?) -> 'cos we do not need to care about char escaping
+	|	^(PATH path)
 	;
 
 caseExpression
@@ -485,15 +540,64 @@ numeric_literal
 
 entityName
 	:	ENTITY_NAME ALIAS_NAME
+	{	registerPersisterSpace($ENTITY_NAME, $ALIAS_NAME);	}
 	;
 
 propertyReference
-	:	^(PROPERTY_REFERENCE identPrimary)
+	:	^(PROPERTY_REFERENCE propertyReferencePath)
 	;
 
-identPrimary
+propertyReferencePath
+	: 	{isUnqualifiedPropertyReference()}? unqualifiedPropertyReference
+	|	pathedPropertyReference
+    |	terminalIndexOperation
+	;
+
+unqualifiedPropertyReference
+	:	IDENTIFIER
+	{	normalizeUnqualifiedPropertyReference( $IDENTIFIER ); }
+	;
+
+pathedPropertyReference
+	:	^(DOT pathedPropertyReferenceSource IDENTIFIER)
+	{	normalizePropertyPathTerminus( $pathedPropertyReferenceSource.propertyReferenceSource, $IDENTIFIER );	}
+	;
+
+pathedPropertyReferenceSource returns [PathedPropertyReferenceSource propertyReferenceSource]
+	:	{(isPersisterReferenceAlias())}?=> IDENTIFIER { $propertyReferenceSource = normalizeQualifiedRoot( $IDENTIFIER ); }
+    |	{(isUnqualifiedPropertyReference())}?=> IDENTIFIER { $propertyReferenceSource = normalizeUnqualifiedRoot( $IDENTIFIER ); }
+    |	intermediatePathedPropertyReference
+    |	intermediateIndexOperation
+    ;
+
+intermediatePathedPropertyReference
+	:	^(DOT pathedPropertyReferenceSource IDENTIFIER )
+	{	normalizePropertyPathIntermediary( $pathedPropertyReferenceSource.tree, $IDENTIFIER );	}
+	;
+
+intermediateIndexOperation
+	:	^( LEFT_SQUARE indexOperationSource indexSelector ) 
+	{	normalizeIntermediateIndexOperation( $indexOperationSource.tree, $indexSelector.tree );	}
+	;
+
+indexOperationSource
+	:	^(DOT pathedPropertyReferenceSource IDENTIFIER )
+    |	{(isUnqualifiedPropertyReference())}?=> IDENTIFIER
+    {	normalizeUnqualifiedPropertyReferenceSource( $IDENTIFIER );	}
+	;
+
+indexSelector
+	:	valueExpression
+	;
+
+terminalIndexOperation
+	:	^( INDEX_OP indexOperationSource indexSelector ) 
+	{	normalizeTerminalIndexOperation( $indexOperationSource.tree, $indexSelector.tree );	}
+	;
+
+path
 	: 	IDENTIFIER
-	|	^(DOT identPrimary identPrimary )
-	|	^(LEFT_SQUARE identPrimary valueExpression* )
-	|	^(LEFT_PAREN identPrimary valueExpression* )
+	|	^(DOT path path )
+	|	^(LEFT_SQUARE path valueExpression* )
+	|	^(LEFT_PAREN path valueExpression* )
 	;

@@ -30,9 +30,6 @@
 package org.hibernate.sql.ast.phase.hql.resolve.path.impl;
 
 import org.antlr.runtime.Token;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.hibernate.QueryException;
 import org.hibernate.engine.SessionFactoryImplementor;
 import org.hibernate.persister.collection.QueryableCollection;
@@ -53,6 +50,8 @@ import org.hibernate.type.CollectionType;
 import org.hibernate.type.ComponentType;
 import org.hibernate.type.EntityType;
 import org.hibernate.type.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Abstract implementation of {@link PathResolutionStrategy} providing convenience methods to actual
@@ -82,7 +81,7 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 	}
 
 	protected final HibernateTree createNode(int type, String text) {
-		return ( HibernateTree ) resolutionContext().getTreeAdaptor().create( type, text );
+		return new HibernateTree(type, text);
 	}
 
 	/**

@@ -469,8 +469,7 @@ statement
 updateStatement
 scope{
 	boolean generateVersionedField;
-}
-	:	udpate_key
+}	:	udpate_key
 		(versioned_key {$updateStatement::generateVersionedField = true;})? 
 			from_key? entityName aliasClause[true] setClause whereClause?
 		-> {	generateUpdateStatementTree($udpate_key.tree, $entityName.tree, $aliasClause.tree, $setClause.tree, $whereClause.tree )	}

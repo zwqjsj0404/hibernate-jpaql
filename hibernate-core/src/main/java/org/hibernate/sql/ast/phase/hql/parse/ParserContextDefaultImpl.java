@@ -7,7 +7,7 @@ import org.hibernate.sql.ast.alias.ImplicitAliasGenerator;
 
 public class ParserContextDefaultImpl implements ParserContext {
 
-	private ImplicitAliasGenerator implicitAliasGenerator = new ImplicitAliasGenerator(); 
+	private final ImplicitAliasGenerator implicitAliasGenerator = new ImplicitAliasGenerator(); 
 	
 	public List getEntityImplementors(String text) {
 		List implementors = new ArrayList();

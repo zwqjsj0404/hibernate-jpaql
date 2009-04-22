@@ -29,12 +29,10 @@
 
 package org.hibernate.sql.ast.phase.hql.resolve;
 
-import org.antlr.runtime.tree.TreeAdaptor;
-
 import org.hibernate.engine.SessionFactoryImplementor;
 import org.hibernate.sql.ast.alias.TableAliasGenerator;
-import org.hibernate.sql.ast.util.TreePrinter;
 import org.hibernate.sql.ast.phase.hql.resolve.path.PathResolutionStrategy;
+import org.hibernate.sql.ast.util.TreePrinter;
 
 /**
  * todo : javadocs
@@ -49,8 +47,6 @@ public interface ResolutionContext {
 	 * @return The session factory.
 	 */
 	public SessionFactoryImplementor getSessionFactoryImplementor();
-
-	public TreeAdaptor getTreeAdaptor();
 
 	/**
 	 * The current {@link PersisterSpaceContext} for this context.  The {@link PersisterSpaceContext}

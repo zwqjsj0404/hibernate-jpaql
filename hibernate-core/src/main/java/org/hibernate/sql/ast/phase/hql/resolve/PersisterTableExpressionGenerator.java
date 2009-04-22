@@ -44,7 +44,7 @@ import org.hibernate.sql.ast.tree.Table;
  *
  * @author Steve Ebersole
  */
-public class PersisterTableExpressionGenerator {
+public abstract class PersisterTableExpressionGenerator {
 
 	public static Table generateTableExpression(
 			Queryable persister,

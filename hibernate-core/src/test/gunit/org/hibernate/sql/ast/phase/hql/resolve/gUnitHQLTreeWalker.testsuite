@@ -1,4 +1,4 @@
-gunit HQLTreeWalker walks HQL;
+gunit TestHQLTreeWalker walks HQL;
 
 @header{
 package org.hibernate.sql.ast.phase.hql.parse;
