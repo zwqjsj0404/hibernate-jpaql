@@ -139,7 +139,7 @@ public class Table extends HibernateTree implements DisplayableNode {
 
 	public static abstract class AbstractTableSpace implements Table.TableSpace {
 		private final TableAliasGenerator.TableAliasRoot aliasRoot;
-		protected final LinkedHashSet<Table> tables = new LinkedHashSet<Table>();
+		protected final ArrayList<Table> tables = new ArrayList<Table>();
 		protected final HashMap<String,Table> aliasToTableMap = new HashMap<String,Table>();
 		protected final HashMap<String,Table> nameToTableMap = new HashMap<String,Table>();
 
@@ -181,14 +181,13 @@ public class Table extends HibernateTree implements DisplayableNode {
 
 	public static class EntityTableSpace extends AbstractTableSpace {
 		private final EntityPersisterSpace persisterSpace;
-		private final ArrayList tables;
 
 		public EntityTableSpace(Queryable entityPersister, TableAliasGenerator.TableAliasRoot aliasRoot) {
 			super( aliasRoot );
 			this.persisterSpace = new EntityPersisterSpace( this, entityPersister );
-			int numberOfTables = entityPersister.getMappedTableMetadata().getJoinedTables().length + 1;
-			int listSize = numberOfTables + (int) ( numberOfTables * .75 ) + 1;
-			this.tables = new ArrayList( listSize );
+//			int numberOfTables = entityPersister.getMappedTableMetadata().getJoinedTables().length + 1;
+//			int listSize = numberOfTables + (int) ( numberOfTables * .75 ) + 1;
+//			this.tables = new ArrayList( listSize );
 
 			PersisterTableExpressionGenerator.generateTableExpression(
 					entityPersister,
@@ -206,7 +205,7 @@ public class Table extends HibernateTree implements DisplayableNode {
 		}
 
 		public Table getDrivingTable() {
-			return ( Table ) tables.get( 0 );
+			return tables.get( 0 );
 		}
 
 		public Table getJoinIntoTable() {
@@ -219,7 +218,7 @@ public class Table extends HibernateTree implements DisplayableNode {
 
 		public Table getContainingTable(String propertyName) {
 			// todo : probably a better solution here is to iterate the internal collection of tables...
-			return ( Table ) tables.get( getEntityPersister().getSubclassPropertyTableNumber( propertyName ) );
+			return tables.get( getEntityPersister().getSubclassPropertyTableNumber( propertyName ) );
 		}
 
 		public Type getPropertyType(String propertyName) {
