@@ -29,7 +29,6 @@
 package org.hibernate.sql.ast.tree;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.HashMap;
 
 import org.hibernate.type.Type;
@@ -226,8 +225,7 @@ public class Table extends HibernateTree implements DisplayableNode {
 		}
 
 		public String[] getPropertyColumnNames(String propertyName) {
-			int index = getEntityPersister().getEntityMetamodel().getPropertyIndex( propertyName );
-			return getEntityPersister().getPropertyColumnNames( index );
+			return getEntityPersister().toColumns( propertyName );
 		}
 
 		public HibernateTree buildIdentifierColumnReferences() {
