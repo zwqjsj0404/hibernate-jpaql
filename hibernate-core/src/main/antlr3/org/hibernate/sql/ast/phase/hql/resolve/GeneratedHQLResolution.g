@@ -41,6 +41,7 @@ options{
 package org.hibernate.sql.ast.phase.hql.resolve;
 
 import org.antlr.runtime.tree.CommonTree;
+import org.hibernate.sql.ast.common.JoinType;
 import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSource;
 }
 
@@ -94,6 +95,13 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSourc
 		// TODO Auto-generated method stub    		
     }
 
+	protected void pushFromStrategy( JoinType joinType,
+			CommonTree assosiationFetchTree, CommonTree propertyFetchTree,
+			CommonTree alias ) {
+	}
+
+	protected void popStrategy(){
+	}
 }
 
 filterStatement[String collectionRole]
@@ -197,7 +205,10 @@ persisterSpaceRoot
 	;
 
 joins
-	:	^(PROPERTY_JOIN joinType FETCH? ALIAS_NAME PROP_FETCH? (collectionExpression|propertyReference) withClause?)
+	:	^(PROPERTY_JOIN jt=joinType ft=FETCH? an=ALIAS_NAME pf=PROP_FETCH? 
+		{	pushFromStrategy($jt.joinType, $ft, $pf, $an );	}	
+		(collectionExpression|propertyReference) withClause?)
+		{	popStrategy();	}
 	|	^(PERSISTER_JOIN joinType persisterSpaceRoot onClause?)
 	;
 
@@ -209,10 +220,10 @@ onClause
 	:	^(ON searchCondition)
 	;
 
-joinType
-	:	CROSS
-	|	INNER
-	|	(LEFT |	RIGHT | FULL) OUTER?
+joinType returns [JoinType joinType]
+	:	CROSS {	$joinType = JoinType.CROSS;	}
+	|	INNER {	$joinType = JoinType.INNER;	}
+	|	(LEFT {	$joinType = JoinType.LEFT;	} |	RIGHT {	$joinType = JoinType.RIGHT;	} | FULL {	$joinType = JoinType.FULL;	}) OUTER?
 	;
 
 selectClause

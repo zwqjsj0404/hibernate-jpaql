@@ -26,15 +26,16 @@ import org.antlr.runtime.tree.CommonTree;
 import org.antlr.runtime.tree.Tree;
 import org.antlr.runtime.tree.TreeNodeStream;
 import org.hibernate.engine.SessionFactoryImplementor;
-import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.Queryable;
 import org.hibernate.sql.ast.alias.DefaultTableAliasGenerator;
 import org.hibernate.sql.ast.alias.TableAliasGenerator;
+import org.hibernate.sql.ast.common.JoinType;
 import org.hibernate.sql.ast.phase.hql.parse.HQLParser;
 import org.hibernate.sql.ast.phase.hql.resolve.path.PathResolutionStrategy;
 import org.hibernate.sql.ast.phase.hql.resolve.path.PathResolutionStrategyStack;
 import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSource;
 import org.hibernate.sql.ast.phase.hql.resolve.path.impl.BasicPathResolutionStrategySupport;
+import org.hibernate.sql.ast.phase.hql.resolve.path.impl.FromClausePathResolutionStrategy;
 import org.hibernate.sql.ast.tree.Table;
 import org.hibernate.sql.ast.tree.Table.EntityTableSpace;
 import org.hibernate.sql.ast.util.TreePrinter;
@@ -72,12 +73,17 @@ public class HQLResolution extends GeneratedHQLResolution implements
 				.push( new BasicPathResolutionStrategySupport( this ) );
 	}
 
-	protected void registerPersisterSpace( CommonTree entityName, CommonTree alias ) {
-		String entityPersisterName = sessionFactory.getImportedClassName( entityName.getText() );
-		Queryable entityPersister = ( Queryable ) sessionFactory.getEntityPersister( entityPersisterName );
+	protected void registerPersisterSpace( CommonTree entityName,
+			CommonTree alias ) {
+		String entityPersisterName = sessionFactory
+				.getImportedClassName( entityName.getText() );
+		Queryable entityPersister = ( Queryable ) sessionFactory
+				.getEntityPersister( entityPersisterName );
 
-		TableAliasGenerator.TableAliasRoot tableAliasRoot = getTableAliasGenerator().generateSqlAliasRoot( entityPersister, alias.getText() );
-		EntityTableSpace tableSpace = new Table.EntityTableSpace( entityPersister, tableAliasRoot );
+		TableAliasGenerator.TableAliasRoot tableAliasRoot = getTableAliasGenerator()
+				.generateSqlAliasRoot( entityPersister, alias.getText() );
+		EntityTableSpace tableSpace = new Table.EntityTableSpace(
+				entityPersister, tableAliasRoot );
 		registerPersisterSpace( tableSpace.getPersisterSpace() );
 	}
 
@@ -118,18 +124,32 @@ public class HQLResolution extends GeneratedHQLResolution implements
 		// TODO Auto-generated method stub
 	}
 
+	protected void pushFromStrategy( JoinType joinType,
+			CommonTree assosiationFetchTree, CommonTree propertyFetchTree,
+			CommonTree alias ) {
+		boolean assosiationFetch = assosiationFetchTree != null ? true : false;
+		boolean propertyFetch = propertyFetchTree != null ? true : false;
+		pathResolutionStrategyStack.push( new FromClausePathResolutionStrategy(
+				this, joinType, assosiationFetch, propertyFetch, alias
+						.getText() ) );
+	}
+
+	protected void popStrategy() {
+		pathResolutionStrategyStack.pop();
+	}
+
 	protected void registerEntityPersisterSpace( CommonTree entityName,
 			CommonTree alias ) {
-		String entityPersisterName = sessionFactory
-				.getImportedClassName( entityName.getText() );
-		EntityPersister entityPersister = sessionFactory
-				.getEntityPersister( entityPersisterName );
-
-		EntityTableSpace tableSpace = new Table.EntityTableSpace(
-				( Queryable ) entityPersister, getTableAliasGenerator()
-						.generateSqlAliasRoot( ( Queryable ) entityPersister,
-								alias.getText() ) );
-		registerPersisterSpace( tableSpace.getPersisterSpace() );
+		// String entityPersisterName = sessionFactory
+		// .getImportedClassName( entityName.getText() );
+		// EntityPersister entityPersister = sessionFactory
+		// .getEntityPersister( entityPersisterName );
+		//
+		// EntityTableSpace tableSpace = new Table.EntityTableSpace(
+		// ( Queryable ) entityPersister, getTableAliasGenerator()
+		// .generateSqlAliasRoot( ( Queryable ) entityPersister,
+		// alias.getText() ) );
+		// registerPersisterSpace( tableSpace.getPersisterSpace() );
 	}
 
 	private void registerPersisterSpace( PersisterSpace persisterSpace ) {
