@@ -428,18 +428,18 @@ public abstract class AbstractPathResolutionStrategy implements PathResolutionSt
 			validateIndexedCollectionReference( lhs, collectionPropertyName );
 
 			QueryableCollection collectionPersister = resolveCollectionPersister( lhs, collectionPropertyName );
-			HibernateTree join = createJoin( lhs, collectionPersister, null, selector );
+			Table joinedTable = createJoin( lhs, collectionPersister, null, selector );
 
 			if ( log.isTraceEnabled() ) {
 				log.trace(
 						resolutionContext().getTreePrinter().renderAsString(
-								join,
+								joinedTable.getParent(),
 								"implicit join : " + lhs.getSourceAlias() + "." + collectionPropertyName + "[]"
 						)
 				);
 			}
 
-			return ( Table ) join.getChild( 1 );
+			return joinedTable;
 		}
 
 		/**
