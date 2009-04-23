@@ -3,7 +3,7 @@ tree grammar GeneratedHQLResolver;
 options{
 	output=AST;
 	rewrite=true;
-	tokenVocab=HQL;
+	tokenVocab=HQLLexer;
 	ASTLabelType=CommonTree;
 	TokenLabelType=CommonToken;
 }
