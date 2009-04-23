@@ -196,6 +196,18 @@
                             <goal>gunit</goal>
                         </goals>
                     </execution>
+                    <execution>
+                        <id>test-grammar-processing</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>antlr</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirectory>${basedir}/src/test/antlr3</sourceDirectory>
+                            <outputDirectory>${basedir}/target/generated-test-sources/antlr3</outputDirectory>
+                            <libDirectory>${basedir}/target/generated-sources/antlr3</libDirectory>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 
