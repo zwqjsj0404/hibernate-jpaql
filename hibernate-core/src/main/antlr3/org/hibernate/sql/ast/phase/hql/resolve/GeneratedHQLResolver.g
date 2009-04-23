@@ -46,8 +46,8 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSourc
 }
 
 @members{
-    protected void registerPersisterSpace(CommonTree entityName,
-                                       CommonTree alias) {
+    protected void registerPersisterSpace(Tree entityName,
+                                       Tree alias) {
         throw new UnsupportedOperationException( "must be overridden!" );
     }
     
@@ -55,7 +55,7 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSourc
         throw new UnsupportedOperationException( "must be overridden!" );
 	}	
 
-	protected PathedPropertyReferenceSource normalizeUnqualifiedPropertyReference(CommonTree property) {
+	protected PathedPropertyReferenceSource normalizeUnqualifiedPropertyReference(Tree property) {
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
 	
@@ -63,39 +63,40 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSourc
         throw new UnsupportedOperationException( "must be overridden!" );
     }
 
-    protected PathedPropertyReferenceSource normalizeUnqualifiedRoot( CommonTree identifier382 ) {
+    protected PathedPropertyReferenceSource normalizeUnqualifiedRoot( Tree identifier382 ) {
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
-	protected PathedPropertyReferenceSource normalizeQualifiedRoot( CommonTree identifier381 ) {
+	protected PathedPropertyReferenceSource normalizeQualifiedRoot( Tree identifier381 ) {
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
-    protected PathedPropertyReferenceSource normalizePropertyPathIntermediary( PathedPropertyReferenceSource source, CommonTree propertyName ) {
+    protected PathedPropertyReferenceSource normalizePropertyPathIntermediary( PathedPropertyReferenceSource source, Tree propertyName ) {
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
-    protected void normalizeIntermediateIndexOperation( CommonTree commonTree,
-			CommonTree commonTree2 ) {
+    protected void normalizeIntermediateIndexOperation( PathedPropertyReferenceSource propertyReferenceSource, Tree collectionProperty,
+			Tree selector ) {
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
-    protected PathedPropertyReferenceSource normalizeUnqualifiedPropertyReferenceSource(
-			CommonTree identifier394 ) {
-        throw new UnsupportedOperationException( "must be overridden!" );
-	}
-
-    protected void normalizeTerminalIndexOperation(CommonTree collectionPath, CommonTree selector) {
+    protected void normalizeTerminalIndexOperation( PathedPropertyReferenceSource propertyReferenceSource, Tree collectionProperty,
+			Tree selector ) {
         throw new UnsupportedOperationException( "must be overridden!" );
     }
 
-    protected Tree normalizePropertyPathTerminus(PathedPropertyReferenceSource source, CommonTree propertyNameNode) {
+    protected PathedPropertyReferenceSource normalizeUnqualifiedPropertyReferenceSource(
+			Tree identifier394 ) {
+        throw new UnsupportedOperationException( "must be overridden!" );
+	}
+
+    protected Tree normalizePropertyPathTerminus(PathedPropertyReferenceSource source, Tree propertyNameNode) {
         throw new UnsupportedOperationException( "must be overridden!" );
     }
 
 	protected void pushFromStrategy( JoinType joinType,
-			CommonTree assosiationFetchTree, CommonTree propertyFetchTree,
-			CommonTree alias ) {
+			Tree assosiationFetchTree, Tree propertyFetchTree,
+			Tree alias ) {
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
 	
@@ -595,18 +596,21 @@ intermediatePathedPropertyReference returns [PathedPropertyReferenceSource prope
 
 intermediateIndexOperation
 	:	^( LEFT_SQUARE indexOperationSource indexSelector ) 
-	{	normalizeIntermediateIndexOperation( $indexOperationSource.tree, $indexSelector.tree );	}
+	{	normalizeIntermediateIndexOperation( $indexOperationSource.propertyReferenceSource, $indexOperationSource.collectionProperty, $indexSelector.tree );	}
 	;
 
 terminalIndexOperation
 	:	^( LEFT_SQUARE indexOperationSource indexSelector ) 
-	{	normalizeTerminalIndexOperation( $indexOperationSource.tree, $indexSelector.tree );	}
+	{	normalizeTerminalIndexOperation( $indexOperationSource.propertyReferenceSource, $indexOperationSource.collectionProperty, $indexSelector.tree );	}
 	;
 
 indexOperationSource returns [PathedPropertyReferenceSource propertyReferenceSource, Tree collectionProperty]
 	:	^(DOT pathedPropertyReferenceSource IDENTIFIER )
+	{	$propertyReferenceSource = $pathedPropertyReferenceSource.propertyReferenceSource;
+		$collectionProperty = $IDENTIFIER;	}
     |	{(isUnqualifiedPropertyReference())}?=> IDENTIFIER
-    {	$propertyReferenceSource = normalizeUnqualifiedPropertyReferenceSource( $IDENTIFIER );	}
+    {	$propertyReferenceSource = normalizeUnqualifiedPropertyReferenceSource( $IDENTIFIER );
+    	$collectionProperty = $IDENTIFIER;	}
 	;
 
 indexSelector

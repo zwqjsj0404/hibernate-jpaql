@@ -56,6 +56,11 @@ public class HibernateTree extends CommonTree {
 		this.token = node.token;
 	}
 
+	public HibernateTree(CommonTree node) {
+		super(node);
+		this.token = node.token;
+	}
+
 	public HibernateTree(Token token) {
 		super(token);
 	}
