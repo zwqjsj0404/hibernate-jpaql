@@ -523,7 +523,7 @@ orderByClause
 sortSpecification
 @init{boolean generateOmmitedElement = true;}
 	:	sortKey collationSpecification? (orderingSpecification {generateOmmitedElement = false;})?
-		-> {generateOmmitedElement}? ^(SORT_SPEC sortKey collationSpecification? ASC)
+		-> {generateOmmitedElement}? ^(SORT_SPEC sortKey collationSpecification? ORDER_SPEC["asc"])
 		-> ^(SORT_SPEC sortKey collationSpecification? orderingSpecification?)
 	;
 
@@ -544,8 +544,8 @@ collateName
 	;
 
 orderingSpecification
-	:	ascending_key
-	|	descending_key
+	:	ascending_key -> ORDER_SPEC[$ascending_key.start, "asc"]
+	|	descending_key -> ORDER_SPEC[$descending_key.start, "desc"]
 	;
 
 logicalExpression
@@ -1438,13 +1438,11 @@ all_key
 	;
 
 ascending_key
-	:	{(validateIdentifierKey("ascending") || validateIdentifierKey("asc"))}?=>  id=IDENTIFIER
-		->	ASC[$id]
+	:	{(validateIdentifierKey("ascending") || validateIdentifierKey("asc"))}?=>  IDENTIFIER
 	;
 
 descending_key
-	:	{(validateIdentifierKey("descending") || validateIdentifierKey("desc"))}?=>  id=IDENTIFIER
-		->	DESC[$id]
+	:	{(validateIdentifierKey("descending") || validateIdentifierKey("desc"))}?=>  IDENTIFIER
 	;
 
 collate_key

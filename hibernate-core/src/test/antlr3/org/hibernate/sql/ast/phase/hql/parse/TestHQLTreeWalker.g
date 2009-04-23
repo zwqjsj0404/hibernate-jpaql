@@ -177,7 +177,7 @@ orderByClause
 	;
 
 sortSpecification
-	:	^(SORT_SPEC valueExpression COLLATE? (ASC|DESC))
+	:	^(SORT_SPEC valueExpression COLLATE? ORDER_SPEC)
 	;
 
 searchCondition

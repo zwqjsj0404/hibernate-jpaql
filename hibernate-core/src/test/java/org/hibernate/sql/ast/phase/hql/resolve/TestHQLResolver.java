@@ -39,12 +39,12 @@ public class TestHQLResolver extends TestCase {
 		super.tearDown();
 	}
 
-	public void testBasicStructure() throws Throwable {
+	public void testBasicStructure() throws RecognitionException {
 		Tree queryTree = normalize( "from Animal" );
 	}
 
 	public void testBasicSelectStructure() throws Throwable {
-		Tree queryTree = normalize( "from Zoo z where mammals['dog'] = ?" );
+		Tree queryTree = normalize( "from Zoo z where z.mammals['dog'].id = ?" );
 	}
 
 	public Tree normalize( String hql ) throws RecognitionException {

@@ -59,7 +59,6 @@ tokens {
 	AND;
 	ANY;
 	AS;
-	ASC;
 	AVG;
 	BETWEEN;
 	BIT_LENGTH;
@@ -76,7 +75,6 @@ tokens {
 	CURRENT_TIMESTAMP;
 	DAY;
 	DELETE;
-	DESC;
 	DISTINCT;
 	ELEMENTS;
 	ELSE;
@@ -124,6 +122,7 @@ tokens {
 	ON;
 	OR;
 	ORDER_BY;
+	ORDER_SPEC;
 	OUTER;
 	POSITION;
 	PROPERTIES;

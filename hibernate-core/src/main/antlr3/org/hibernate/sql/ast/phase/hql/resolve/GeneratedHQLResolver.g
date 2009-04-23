@@ -75,7 +75,7 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSourc
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
-    protected void normalizeIntermediateIndexOperation( PathedPropertyReferenceSource propertyReferenceSource, Tree collectionProperty,
+    protected PathedPropertyReferenceSource normalizeIntermediateIndexOperation( PathedPropertyReferenceSource propertyReferenceSource, Tree collectionProperty,
 			Tree selector ) {
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
@@ -107,7 +107,7 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSourc
 
 	protected void popStrategy(){
         throw new UnsupportedOperationException( "must be overridden!" );
-	}
+	}	
 }
 
 filterStatement[String collectionRole]
@@ -251,7 +251,7 @@ orderByClause
 	;
 
 sortSpecification
-	:	^(SORT_SPEC valueExpression COLLATE? (ASC|DESC))
+	:	^(SORT_SPEC valueExpression COLLATE? ORDER_SPEC)
 	;
 
 searchCondition
@@ -586,7 +586,7 @@ pathedPropertyReferenceSource returns [PathedPropertyReferenceSource propertyRef
 	:	{(isPersisterReferenceAlias())}?=> IDENTIFIER { $propertyReferenceSource = normalizeQualifiedRoot( $IDENTIFIER ); }
     |	{(isUnqualifiedPropertyReference())}?=> IDENTIFIER { $propertyReferenceSource = normalizeUnqualifiedRoot( $IDENTIFIER ); }
     |	intermediatePathedPropertyReference { $propertyReferenceSource = $intermediatePathedPropertyReference.propertyReferenceSource; }
-    |	intermediateIndexOperation { $propertyReferenceSource = null; }
+    |	intermediateIndexOperation { $propertyReferenceSource = $intermediateIndexOperation.propertyReferenceSource; }
     ;
 
 intermediatePathedPropertyReference returns [PathedPropertyReferenceSource propertyReferenceSource]
@@ -594,9 +594,9 @@ intermediatePathedPropertyReference returns [PathedPropertyReferenceSource prope
 	{	$propertyReferenceSource = normalizePropertyPathIntermediary( $pathedPropertyReferenceSource.propertyReferenceSource, $IDENTIFIER );	}
 	;
 
-intermediateIndexOperation
+intermediateIndexOperation returns [PathedPropertyReferenceSource propertyReferenceSource]
 	:	^( LEFT_SQUARE indexOperationSource indexSelector ) 
-	{	normalizeIntermediateIndexOperation( $indexOperationSource.propertyReferenceSource, $indexOperationSource.collectionProperty, $indexSelector.tree );	}
+	{	$propertyReferenceSource = normalizeIntermediateIndexOperation( $indexOperationSource.propertyReferenceSource, $indexOperationSource.collectionProperty, $indexSelector.tree );	}
 	;
 
 terminalIndexOperation
