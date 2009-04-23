@@ -1,4 +1,4 @@
-tree grammar GeneratedHQLResolution;
+tree grammar GeneratedHQLResolver;
 
 options{
 	output=AST;
@@ -55,7 +55,7 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSourc
         throw new UnsupportedOperationException( "must be overridden!" );
 	}	
 
-	protected Tree normalizeUnqualifiedPropertyReference(CommonTree property) {
+	protected PathedPropertyReferenceSource normalizeUnqualifiedPropertyReference(CommonTree property) {
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
 	
@@ -80,7 +80,7 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSourc
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
 
-    protected void normalizeUnqualifiedPropertyReferenceSource(
+    protected PathedPropertyReferenceSource normalizeUnqualifiedPropertyReferenceSource(
 			CommonTree identifier394 ) {
         throw new UnsupportedOperationException( "must be overridden!" );
 	}
@@ -89,7 +89,7 @@ import org.hibernate.sql.ast.phase.hql.resolve.path.PathedPropertyReferenceSourc
         throw new UnsupportedOperationException( "must be overridden!" );
     }
 
-    protected void normalizePropertyPathTerminus(PathedPropertyReferenceSource source, CommonTree propertyNameNode) {
+    protected Tree normalizePropertyPathTerminus(PathedPropertyReferenceSource source, CommonTree propertyNameNode) {
         throw new UnsupportedOperationException( "must be overridden!" );
     }
 
@@ -571,9 +571,9 @@ propertyReferencePath
     |	terminalIndexOperation
 	;
 
-unqualifiedPropertyReference
+unqualifiedPropertyReference returns [PathedPropertyReferenceSource propertyReferenceSource]
 	:	IDENTIFIER
-	{	normalizeUnqualifiedPropertyReference( $IDENTIFIER ); }
+	{	$propertyReferenceSource = normalizeUnqualifiedPropertyReference( $IDENTIFIER ); }
 	;
 
 pathedPropertyReference
@@ -598,19 +598,19 @@ intermediateIndexOperation
 	{	normalizeIntermediateIndexOperation( $indexOperationSource.tree, $indexSelector.tree );	}
 	;
 
-indexOperationSource
+terminalIndexOperation
+	:	^( LEFT_SQUARE indexOperationSource indexSelector ) 
+	{	normalizeTerminalIndexOperation( $indexOperationSource.tree, $indexSelector.tree );	}
+	;
+
+indexOperationSource returns [PathedPropertyReferenceSource propertyReferenceSource, Tree collectionProperty]
 	:	^(DOT pathedPropertyReferenceSource IDENTIFIER )
     |	{(isUnqualifiedPropertyReference())}?=> IDENTIFIER
-    {	normalizeUnqualifiedPropertyReferenceSource( $IDENTIFIER );	}
+    {	$propertyReferenceSource = normalizeUnqualifiedPropertyReferenceSource( $IDENTIFIER );	}
 	;
 
 indexSelector
 	:	valueExpression
-	;
-
-terminalIndexOperation
-	:	^( INDEX_OP indexOperationSource indexSelector ) 
-	{	normalizeTerminalIndexOperation( $indexOperationSource.tree, $indexSelector.tree );	}
 	;
 
 path

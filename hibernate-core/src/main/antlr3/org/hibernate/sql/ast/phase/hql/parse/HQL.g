@@ -475,6 +475,7 @@ scope{
 		-> {	generateUpdateStatementTree($udpate_key.tree, $entityName.tree, $aliasClause.tree, $setClause.tree, $whereClause.tree )	}
 	;
 
+//TODO: check what is necessary to generate at versioned field
 setClause
 	:	set_key assignment (COMMA assignment)*
 		-> {$updateStatement::generateVersionedField}? ^(set_key assignment+ ^(EQUALS VERSIONED_VALUE STRING_LITERAL))

@@ -44,7 +44,7 @@ public class TestHQLResolver extends TestCase {
 	}
 
 	public void testBasicSelectStructure() throws Throwable {
-		Tree queryTree = normalize( "select a.id from Animal a" );
+		Tree queryTree = normalize( "from Zoo z where mammals['dog'] = ?" );
 	}
 
 	public Tree normalize( String hql ) throws RecognitionException {
@@ -62,7 +62,7 @@ public class TestHQLResolver extends TestCase {
 		CommonTreeNodeStream nodes = new CommonTreeNodeStream( result );
 		nodes.setTokenStream( tokens );
 
-		HQLResolution resololution = new HQLResolution( nodes, sessionFactory );
+		HQLResolver resololution = new HQLResolver( nodes, sessionFactory );
 
 		System.out.println( resololution.getTreePrinter().renderAsString(
 				result, "Parser Result" ) );
