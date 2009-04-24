@@ -134,6 +134,10 @@ public class Table extends HibernateTree implements DisplayableNode {
 		public HibernateTree buildIdentifierColumnReferences();
 
 		public HibernateTree buildCompleteColumnReferences();
+
+		public HibernateTree buildIdentifierSelectExpressionList();
+
+		public HibernateTree buildCompleteSelectExpressionList();
 	}
 
 	public static abstract class AbstractTableSpace implements Table.TableSpace {
@@ -243,6 +247,16 @@ public class Table extends HibernateTree implements DisplayableNode {
 			// todo : implement
 			return null;
 		}
+
+		public HibernateTree buildIdentifierSelectExpressionList() {
+			// todo : implement
+			return null;
+		}
+
+		public HibernateTree buildCompleteSelectExpressionList() {
+			// todo : implement
+			return null;
+		}
 	}
 
 	private static class EntityPersisterSpace extends AbstractPersisterSpace {
@@ -338,6 +352,16 @@ public class Table extends HibernateTree implements DisplayableNode {
 		}
 
 		public HibernateTree buildCompleteColumnReferences() {
+			// todo : implement
+			return null;
+		}
+
+		public HibernateTree buildIdentifierSelectExpressionList() {
+			// todo : implement
+			return null;
+		}
+
+		public HibernateTree buildCompleteSelectExpressionList() {
 			// todo : implement
 			return null;
 		}
