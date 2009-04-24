@@ -24,172 +24,86 @@
  */
 package org.hibernate.sql.ast.ordering;
 
-import java.util.ArrayList;
-
-import org.hibernate.sql.Template;
-import org.hibernate.dialect.function.SQLFunction;
-import org.hibernate.util.StringHelper;
-
+import org.antlr.runtime.TokenStream;
+import org.antlr.runtime.tree.CommonTree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.antlr.runtime.TokenStream;
-import org.antlr.runtime.CommonToken;
-import org.antlr.runtime.tree.CommonTree;
-import org.antlr.runtime.tree.Tree;
+
+import org.hibernate.sql.ast.common.HibernateTree;
+import org.hibernate.sql.Template;
 
 /**
  * Extension of the Antlr-generated parser for the purpose of adding our custom parsing behavior.
  *
  * @author Steve Ebersole
  */
-public class OrderByFragmentParser extends OrderByParserParser {
+public class OrderByFragmentParser extends OrderByParser {
 	private static final Logger log = LoggerFactory.getLogger( OrderByFragmentParser.class );
-
 	private final TranslationContext context;
-	private int traceDepth = 0;
+
+	private final String openQuoteChar;
+	private final String closeQuoteChar;
 
 	public OrderByFragmentParser(TokenStream lexer, TranslationContext context) {
 		super( lexer );
 		this.context = context;
-	}
-//
-//
-//	// handle trace logging ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-//	public void traceIn(String ruleName) throws TokenStreamException {
-//		if ( inputState.guessing > 0 ) {
-//			return;
-//		}
-//		String prefix = StringHelper.repeat( "-", (traceDepth++ * 2) ) + "->";
-//		trace( prefix + ruleName );
-//	}
-//
-//	public void traceOut(String ruleName) throws TokenStreamException {
-//		if ( inputState.guessing > 0 ) {
-//			return;
-//		}
-//		String prefix = "<-" + StringHelper.repeat( "-", (--traceDepth * 2) );
-//		trace( prefix + ruleName );
-//	}
-//
-//    private void trace(String msg) {
-//		log.trace( msg );
-//	}
 
-protected CommonTree quotedIdentifier(CommonTree ident) {
-    return createTreeNode( IDENTIFIER, Template.TEMPLATE + "." + context.getDialect().quote( '`' + ident.getText() + '`' ) );
-}
-
-    protected CommonTree quotedString(CommonTree ident) {
-		return createTreeNode( IDENTIFIER, context.getDialect().quote( ident.getText() ) );
+		this.openQuoteChar = Character.toString( context.getDialect().openQuote() );
+		this.closeQuoteChar = Character.toString( context.getDialect().closeQuote() );
 	}
 
-    protected boolean isFunctionName(CommonToken token) {
-        return context.getSqlFunctionRegistry().hasFunction( token.getText() );
-    }
-
-    protected CommonTree resolveFunction(CommonTree tree) {
-		Tree argumentList = tree.getChild( 0 );
-		assert "{param list}".equals( argumentList.getText() );
-
-		final String functionName = tree.getText();
-		final SQLFunction function = context.getSqlFunctionRegistry().findSQLFunction( functionName );
-
-		if ( function == null ) {
-            // If the function is not registered with the session factory we just need to render it as-is
-            // including its arguments...
-			String text = functionName;
-            int count = argumentList.getChildCount();
-            if ( count > 0 ) {
-                text += '(';
-                for ( int i = 0; i < count; i++ ) {
-                    Tree argument = argumentList.getChild( i );
-                    text += argument.getText();
-                    if ( i < count ) {
-                        text += ", ";
-                    }
-                }
-                text += ')';
-            }
-            return createTreeNode( IDENTIFIER, text );
-		}
-		else {
-			ArrayList expressions = new ArrayList();
-            for ( int i = 0; i < argumentList.getChildCount(); i++ ) {
-                expressions.add( argumentList.getChild( i ).getText() );
-            }
-			final String text = function.render( expressions, context.getSessionFactory() );
-			return createTreeNode( IDENTIFIER, text );
-		}
+	@Override
+	protected boolean isFunctionName(String text) {
+		log.trace( "Checking function name [" + text + "]" );
+		return context.getSqlFunctionRegistry().hasFunction( text );
 	}
 
-    protected CommonTree resolveIdent(CommonTree ident) {
-		String text = ident.getText();
-		String[] replacements;
+	@Override
+	protected boolean isPropertyName(String text) {
+		log.trace( "Checking property name [" + text + "]" );
 		try {
-			replacements = context.getColumnMapper().map( text );
+			return context.getColumnMapper().map( text ) != null;
 		}
-		catch( Throwable t ) {
-			replacements = null;
-		}
-
-		if ( replacements == null || replacements.length == 0 ) {
-			return createTreeNode( IDENTIFIER, Template.TEMPLATE + "." + text );
-		}
-		else if ( replacements.length == 1 ) {
-			return createTreeNode( IDENTIFIER, Template.TEMPLATE + "." + replacements[0] );
-		}
-		else {
-            final CommonTree root = createTreeNode( IDENT_LIST, "{ident list}" );
-			for ( int i = 0; i < replacements.length; i++ ) {
-				final String identText = Template.TEMPLATE + '.' + replacements[i];
-				root.addChild( createTreeNode( IDENTIFIER, identText ) );
-			}
-			return root;
+		catch ( Throwable t ) {
+			return false;
 		}
 	}
-//
-//	/**
-//	 * {@inheritDoc}
-//	 */
-//	protected AST postProcessSortSpecification(AST sortSpec) {
-//		assert SORT_SPEC == sortSpec.getType();
-//		SortSpecification sortSpecification = ( SortSpecification ) sortSpec;
-//		AST sortKey = sortSpecification.getSortKey();
-//		if ( IDENT_LIST == sortKey.getFirstChild().getType() ) {
-//			AST identList = sortKey.getFirstChild();
-//			AST ident = identList.getFirstChild();
-//			AST holder = new CommonAST();
-//			do {
-//				holder.addChild(
-//						createSortSpecification(
-//								ident,
-//								sortSpecification.getCollation(),
-//								sortSpecification.getOrdering()
-//						)
-//				);
-//				ident = ident.getNextSibling();
-//			} while ( ident != null );
-//			sortSpec = holder.getFirstChild();
-//		}
-//		return sortSpec;
-//	}
-//
-//	private SortSpecification createSortSpecification(
-//			AST ident,
-//			CollationSpecification collationSpecification,
-//			OrderingSpecification orderingSpecification) {
-//		AST sortSpecification = getASTFactory().create( SORT_SPEC, "{{sort specification}}" );
-//		AST sortKey = getASTFactory().create( SORT_KEY, "{{sort key}}" );
-//		AST newIdent = getASTFactory().create( ident.getType(), ident.getText() );
-//		sortKey.setFirstChild( newIdent );
-//		sortSpecification.setFirstChild( sortKey );
-//		if ( collationSpecification != null ) {
-//			sortSpecification.addChild( collationSpecification );
-//		}
-//		if ( orderingSpecification != null ) {
-//			sortSpecification.addChild( orderingSpecification );
-//		}
-//		return ( SortSpecification ) sortSpecification;
-//	}
+
+	@Override
+	protected CommonTree buildPropertyColumns(CommonTree propertyTree) {
+		final String text = extractPropertyName( propertyTree );
+		String[] columns = context.getColumnMapper().map( text );
+		if ( columns.length == 1 ) {
+			return buildColumn( columns[0] );
+		}
+		else {
+			HibernateTree vector = new HibernateTree( VECTOR_EXPR );
+			for ( String column : columns ) {
+				vector.addChild( buildColumn( column ) );
+			}
+			return vector;
+		}
+	}
+
+	private CommonTree buildColumn(String columnName) {
+		// ugh
+		HibernateTree columnNameNode;
+		if ( columnName.startsWith( openQuoteChar ) && columnName.endsWith( closeQuoteChar ) ) {
+			columnName = columnName.substring( 1, columnName.length() - 1 );
+			columnNameNode = new HibernateTree( QUOTED_IDENTIFIER, columnName );
+		}
+		else {
+			columnNameNode = new HibernateTree( IDENTIFIER, columnName );
+		}
+
+		HibernateTree tree = new HibernateTree( COLUMN );
+		tree.addChild( new HibernateTree( ALIAS_REF, Template.TEMPLATE ) );
+		tree.addChild( columnNameNode );
+
+		return tree;
+	}
+
+	private String extractPropertyName(CommonTree propertyTree) {
+		return propertyTree.getText();
+	}
 }

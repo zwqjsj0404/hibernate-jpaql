@@ -36,6 +36,7 @@ import org.antlr.runtime.Token;
  * todo : javadocs
  * 
  * @author Steve Ebersole
+ * @author Alexandre Porcelli
  */
 public class HibernateTree extends CommonTree {
 	/**

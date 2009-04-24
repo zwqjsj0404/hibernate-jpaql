@@ -24,15 +24,13 @@
  */
 package org.hibernate.sql.ast.ordering;
 
-import java.io.StringReader;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.hibernate.HibernateException;
 import org.hibernate.sql.ast.util.TreePrinter;
-import org.antlr.runtime.CharStream;
-import org.antlr.runtime.TokenStream;
+import org.hibernate.sql.ast.phase.hql.parse.HQLLexer;
+
 import org.antlr.runtime.ANTLRStringStream;
 import org.antlr.runtime.CommonTokenStream;
 import org.antlr.runtime.tree.Tree;
@@ -59,13 +57,13 @@ public class OrderByFragmentTranslator {
 	 * @return The translated fragment.
 	 */
 	public String render(String fragment) {
-		OrderByParserLexer lexer = new OrderByParserLexer( new ANTLRStringStream( fragment ) );
+		HQLLexer lexer = new HQLLexer( new ANTLRStringStream( fragment ) );
 		OrderByFragmentParser parser = new OrderByFragmentParser( new CommonTokenStream( lexer ), context );
 		try {
             Tree tree = ( Tree ) parser.orderByFragment().getTree();
 
             if ( log.isTraceEnabled() ) {
-                TreePrinter printer = new TreePrinter( OrderByParserParser.class );
+                TreePrinter printer = new TreePrinter( OrderByParser.class );
                 log.trace( printer.renderAsString( tree, "--- {order-by fragment} ---" ) );
             }
 		}

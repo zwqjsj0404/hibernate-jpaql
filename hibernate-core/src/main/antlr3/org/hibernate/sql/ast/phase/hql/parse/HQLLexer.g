@@ -19,6 +19,7 @@ tokens {
 	ENTITY_PERSISTER_REF;
 	FILTER;
 	GENERAL_FUNCTION_CALL;
+	GENERAL_FUNCTION_ARGUMENTS;
 	GROUPING_VALUE;
 	IN_LIST;
 	INSERTABILITY_SPEC;
@@ -32,6 +33,7 @@ tokens {
 	NOT_IN;
 	NOT_LIKE;
 	NOT_MEMBER_OF;
+	ORDER_SPEC;
 	PATH;
 	PERSISTER_JOIN;
 	PERSISTER_SPACE;
@@ -122,7 +124,6 @@ tokens {
 	ON;
 	OR;
 	ORDER_BY;
-	ORDER_SPEC;
 	OUTER;
 	POSITION;
 	PROPERTIES;
@@ -233,7 +234,6 @@ CHARACTER_LITERAL
 STRING_LITERAL
     :  '"' ( ESCAPE_SEQUENCE | ~('\\'|'"') )* '"'
     |  ('\'' ( ESCAPE_SEQUENCE | ~('\\'|'\'') )* '\'')+
-    |  '`' ( ESCAPE_SEQUENCE | ~('\\'|'`') )* '`'
     ;
 
 fragment
@@ -319,6 +319,10 @@ ARROW
 IDENTIFIER
 	:	('a'..'z'|'A'..'Z'|'_'|'$'|'\u0080'..'\ufffe')('a'..'z'|'A'..'Z'|'_'|'$'|'0'..'9'|'\u0080'..'\ufffe')*
 	;
+
+QUOTED_IDENTIFIER
+    : '`' ( ESCAPE_SEQUENCE | ~('\\'|'`') )* '`'
+    ;
 
 LEFT_PAREN
         :	'('

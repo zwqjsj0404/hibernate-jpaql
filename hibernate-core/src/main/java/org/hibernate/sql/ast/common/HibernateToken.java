@@ -26,7 +26,6 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-
 package org.hibernate.sql.ast.common;
 
 import org.antlr.runtime.CommonToken;
@@ -37,34 +36,34 @@ import org.antlr.runtime.CharStream;
  * Models the token-type/text portion of an Antlr tree for a specific node in said tree.
  *
  * @author Steve Ebersole
+ * @author Alexandre Porcelli
  */
 public class HibernateToken extends CommonToken {
-       public HibernateToken(int type) {
-               super(type);
-       }
+	public HibernateToken(int type) {
+		super( type );
+	}
 
-       public HibernateToken(CharStream input, int type, int channel, int start,
-                       int stop) {
-               super(input, type, channel, start, stop);
-       }
+	public HibernateToken(CharStream input, int type, int channel, int start, int stop) {
+		super( input, type, channel, start, stop );
+	}
 
-       public HibernateToken(int type, String text) {
-               super(type, text);
-       }
+	public HibernateToken(int type, String text) {
+		super( type, text );
+	}
 
-       /**
-        * Constructor that preserves the char offset
-        *
-        * @param oldToken
-        */
-       public HibernateToken(Token oldToken) {
-               super(oldToken);
-               if (null != oldToken
-                               && (oldToken.getClass().equals(CommonToken.class) || oldToken
-                                               .getClass().equals(HibernateToken.class))) {
-                       start = ((CommonToken) oldToken).getStartIndex();
-                       stop = ((CommonToken) oldToken).getStopIndex();
-               }
-       }
+	/**
+	 * Constructor that preserves the char offset
+	 *
+	 * @param oldToken A token to use to template the creation of this new one.
+	 */
+	public HibernateToken(Token oldToken) {
+		super( oldToken );
+		if ( null != oldToken
+				&& ( oldToken.getClass().equals( CommonToken.class ) || oldToken
+				.getClass().equals( HibernateToken.class ) ) ) {
+			start = ( ( CommonToken ) oldToken ).getStartIndex();
+			stop = ( ( CommonToken ) oldToken ).getStopIndex();
+		}
+	}
 
 }

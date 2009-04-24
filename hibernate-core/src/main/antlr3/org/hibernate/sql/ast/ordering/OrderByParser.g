@@ -1,3 +1,12 @@
+parser grammar OrderByParser;
+
+options {
+	tokenVocab=HQLLexer;
+	output=AST;
+	ASTLabelType=CommonTree;
+}
+
+@parser::header {
 /*
  * Hibernate, Relational Persistence for Idiomatic Java
  *
@@ -21,148 +30,65 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  *
+ * Portions of SQL grammar parsing copyright (C) 2003 by Lubos Vnuk.  All rights
+ * reserved.  These portions are distributed under license by Red Hat Middleware
+ * LLC and are covered by the above LGPL notice.  If you redistribute this material,
+ * with or without modification, you must preserve this copyright notice in its
+ * entirety.
  */
-grammar OrderByParser;
+package org.hibernate.sql.ast.ordering;
 
-options {
-	language = Java;
-	output = AST;
-	ASTLabelType = CommonTree;
-}
-
-tokens {
-    COLLATE;
-	ASCENDING;
-	DESCENDING;
-
-    ORDER_BY;
-    SORT_SPEC;
-    ORDER_SPEC;
-    SORT_KEY;
-    EXPR_LIST;
-    IDENT_LIST;
-    COLUMN_REF;
-
-	NUM_INTEGER_LITERAL;
-    NUM_LONG_LITERAL;
-    NUM_DOUBLE_LITERAL;
-    NUM_FLOAT_LITERAL;
-}
-
-@lexer::header {
-	package org.hibernate.sql.ast.ordering;
-}
-
-@lexer::members {
-}
-
-@parser::header {
-	package org.hibernate.sql.ast.ordering;
-
-	import org.hibernate.sql.Template;
-	import org.hibernate.dialect.function.SQLFunction;
+import org.hibernate.sql.Template;
 }
 
 @parser::members {
     /**
-     * Process the given node as a quote identifier.  These need to be quoted in the dialect-specific way.
+     * A check to see if the text represents a known function name (in addition to the
+     * set of known {@link #standardFunction "standard"} functions.  This is only needed in the
+     * case of seeing a dot-ident structure which is not followed by a paren; such structures
+     * which are followed by a paren are explicitly assumed to be a function name.
      *
-     * @param ident The quoted-identifier node.
+     * @param text The text to check as a  function name.
      *
-     * @return The processed node.
+     * @return True if the text is a known function name, false otherwise.
+     *
+     * @see #standardFunction
      */
-    protected CommonTree quotedIdentifier(CommonTree ident) {
-        // here we assume single-quote as the identifier quote character...
-        return createTreeNode( IDENTIFIER, Template.TEMPLATE + ".'" + ident.getText() + "'" );
-    }
-
-
-    /**
-     * Process the given node as a quote string.
-     *
-     * @param token The quoted string.  This is used from within function param recognition, and represents a
-     * SQL-quoted string.
-     *
-     * @return The processed node.
-     */
-    protected CommonTree quotedString(Token token) {
-    	return createTreeNode( STRING_LITERAL, "'" + token.getText() + "'" );
-    }
-
-    /**
-     * A check to see if the text of the given node represents a known function name.
-     *
-     * @param token The node whose text we want to check.
-     *
-     * @return True if the node's text is a known function name, false otherwise.
-     *
-     * @see org.hibernate.dialect.function.SQLFunctionRegistry
-     */
-    protected boolean isFunctionName(Token token) {
+    protected boolean isFunctionName(String text) {
+        // by default, assume it is not
     	return false;
     }
 
     /**
-     * Process the given node as a function name.  Differs from {@link #resolveFunction(org.antlr.runtime.tree.CommonTree)
-     * specifically in that here we are expecting just a function name without parens or arguments.
+     * A check to see if the text represents a mapped property name.
      *
-     * @param token The token representing the function name.
+     * @param text The text to check as a property name.
      *
-     * @return The processed node.
+     * @return True if the text is a mapped property name, false otherwise.
      */
-    protected CommonTree resolveFunction(Token token) {
-        return resolveFunction( new CommonTree( token ) );
+    protected boolean isPropertyName(String text) {
+        // by default, assume it is not
+    	return false;
     }
 
     /**
-     * Process the given node as a function.
+     * Given a property, resolve it's {@link #COLUMN} or {@link #VECTOR_EXPR} tree.
      *
-     * @param tree The node representing the function invocation (including parameters as subtree components).
+     * @param propertyTree The tree representing the property name.
      *
-     * @return The processed node.
+     * @return The column(s) tree.
      */
-    protected CommonTree resolveFunction(CommonTree tree) {
-		Tree argumentList = tree.getChild( 0 );
-		assert argumentList == null || "{param list}".equals( argumentList.getText() );
-
-        String text = tree.getText();
-        int count = argumentList == null ? 0 : argumentList.getChildCount();
-        if ( count > 0 ) {
-            text += '(';
-            for ( int i = 0; i < count; i++ ) {
-                Tree argument = argumentList.getChild( i );
-                text += argument.getText();
-                if ( i < count ) {
-                    text += ", ";
-                }
-            }
-            text += ')';
-        }
-        return createTreeNode( IDENTIFIER, text );
+    protected CommonTree buildPropertyColumns(CommonTree propertyTree) {
+        throw new UnsupportedOperationException( "must be overridden!" );
     }
 
-    protected CommonTree resolveIdent(Token token) {
-        return resolveIdent( new CommonTree( token ) );
-    }
-
-    /**
-     * Process the given node as an IDENTIFIER.  May represent either a column reference or a property reference.
-     *
-     * @param ident The node whose text represents either a column or property reference.
-     *
-     * @return The processed node.
-     */
-    protected CommonTree resolveIdent(CommonTree ident) {
-        return createTreeNode( IDENTIFIER, Template.TEMPLATE + "." + ident.getText() );
-    }
-
-	private boolean validateIdentifierAsKeyword(String text) {
-		return validateLT( 1, text );
+	private boolean validateSoftKeyword(String text) {
+		return validateLT(1, text);
 	}
 
 	private boolean validateLT(int offset, String text) {
 		String text2Validate = retrieveLT( offset );
-		return text2Validate == null ? false : text2Validate.equalsIgnoreCase(text);
+		return text2Validate == null ? false : text2Validate.equalsIgnoreCase( text );
 	}
 
 	private String retrieveLT(int offset) {
@@ -171,10 +97,6 @@ tokens {
       	}
 		Token token = input.LT(offset);
 		return token == null ? null : token.getText();
-	}
-
-	protected CommonTree createTreeNode(int type, String text) {
-		return new CommonTree( new CommonToken( type, text ) );
 	}
 }
 
@@ -185,17 +107,19 @@ tokens {
 /**
  * Main recognition rule for this grammar
  */
-orderByFragment
-	: sortSpecification ( ',' sortSpecification )* -> ^( ORDER_BY sortSpecification+ )
-	;
+orderByFragment :
+    sortSpecification ( COMMA sortSpecification )*
+        -> ^( ORDER_BY sortSpecification+ )
+;
 
 
 /**
- * Reconition rule for what ANSI SQL terms the <tt>sort specification</tt>, which is essentially each thing upon which
- * the results should be sorted.
+ * Reconition rule for what ANSI SQL terms the <tt>sort specification</tt>.  These are the atomic elements of the
+ * <tt>ORDER BY</tt> list pieces.
  */
-sortSpecification
-	: sortKey collationSpecification? orderingSpecification? -> ^( SORT_SPEC sortKey collationSpecification? orderingSpecification? )
+sortSpecification :
+    sortKey collationSpecification? orderingSpecification?
+        -> ^( SORT_SPEC sortKey collationSpecification? orderingSpecification? )
 ;
 
 
@@ -203,213 +127,441 @@ sortSpecification
  * Reconition rule for what ANSI SQL terms the <tt>sort key</tt> which is the expression (column, function, etc) upon
  * which to base the sorting.
  */
-sortKey
-	: expression -> ^( SORT_KEY expression )
+sortKey :
+    expression
 ;
 
 /**
  * Reconition rule what this grammar recognizes as valid <tt>sort key</tt>.
  */
 expression
-	: hardQuoteExpression
-	| ( IDENTIFIER ('.' IDENTIFIER)* OPEN_PAREN ) => functionCall
-    | simplePropertyPath
-    | IDENTIFIER 	-> {isFunctionName($IDENTIFIER)}? 	{ resolveFunction( $IDENTIFIER ) }
-    			-> 							{ resolveIdent( $IDENTIFIER ) }
+    : QUOTED_IDENTIFIER -> ^( COLUMN[$QUOTED_IDENTIFIER] ALIAS_REF[Template.TEMPLATE] QUOTED_IDENTIFIER[$QUOTED_IDENTIFIER] )
+    // we treat the so-called standard functions differently because they are handled differently by the HQL lexer which we also use here...
+    | standardFunction
+    // not identDotIdentStructure because we dont want QUOTED_IDENTIFIERs is here
+    | ( IDENTIFIER ( DOT IDENTIFIER )* LEFT_PAREN ) => generalFunction
+    // otherwise we fully expect a dot-identifier series, and then we just need to decode the semantic of that structure
+    | identDotIdentStructure
+        -> { ( isFunctionName($identDotIdentStructure.text) ) }?
+              // we have a function with parens (thus no args)
+              ^( GENERAL_FUNCTION_CALL[$identDotIdentStructure.start,$identDotIdentStructure.text] )
+        -> { ( isPropertyName($identDotIdentStructure.text) ) }?
+              // we have a reference to a mapped property
+              { buildPropertyColumns( $identDotIdentStructure.tree ) }
+        -> { ( $identDotIdentStructure.tree.getType() == DOT ) }?
+              // we have a reference to a column which is already qualified
+              identDotIdentStructure
+        ->
+              // we have a reference to a column which is not qualified
+              ^( COLUMN ALIAS_REF[Template.TEMPLATE] IDENTIFIER[$identDotIdentStructure.start,$identDotIdentStructure.text] )
+    ;
+
+fragment
+identifier
+    : IDENTIFIER
+    | QUOTED_IDENTIFIER
+    ;
+
+fragment
+identDotIdentStructure
+    : IDENTIFIER ( DOT^ identifier )*
+    ;
+
+standardFunction
+	:	castFunction
+	|	concatFunction
+	|	substringFunction
+	|	trimFunction
+	|	upperFunction
+	|	lowerFunction
+	|	lengthFunction
+	|	locateFunction
+	|	absFunction
+	|	sqrtFunction
+	|	modFunction
+	|	currentDateFunction
+	|	currentTimeFunction
+	|	currentTimestampFunction
+	|	extractFunction
+	|	positionFunction
+	|	charLengthFunction
+	|	octetLengthFunction
+	|	bitLengthFunction
 	;
 
-hardQuoteExpression
-@after { $tree = quotedIdentifier( $tree ); }
-	: HARD_QUOTE IDENTIFIER HARD_QUOTE -> IDENTIFIER
+castFunction
+	:	cast_keyword^ LEFT_PAREN! expression as_keyword! dataType RIGHT_PAREN!
 	;
+
+fragment
+dataType
+	:	IDENTIFIER
+	;
+
+concatFunction
+	:	concat_keyword^ LEFT_PAREN! expression ( COMMA! expression )+ RIGHT_PAREN!
+	;
+
+substringFunction
+	:	substring_keyword^ LEFT_PAREN! expression COMMA! expression ( COMMA! expression)? RIGHT_PAREN!
+	;
+
+trimFunction
+	:	trim_keyword LEFT_PAREN trimOperands RIGHT_PAREN
+		-> ^(trim_keyword trimOperands)
+	;
+
+fragment
+trimOperands
+options{
+k=2;
+}
+@init {boolean hasSecondExpression = false;}
+	:	trimSpecification from_keyword expression -> ^(trimSpecification STRING_LITERAL[" "] expression)
+	|	trimSpecification expression from_keyword expression -> ^(trimSpecification expression+)
+	|	from_keyword expression -> ^(BOTH STRING_LITERAL[" "] expression)
+	|	cn=expression ( from_keyword expression {hasSecondExpression = true;} )?
+		-> {hasSecondExpression}? ^(BOTH expression+)
+		-> ^(BOTH STRING_LITERAL[" "] $cn)
+	;
+
+fragment
+trimSpecification
+	:	leading_keyword
+	|	trailing_keyword
+	|	both_keyword
+	;
+
+upperFunction
+	:	upper_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	;
+
+lowerFunction
+	:	lower_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	;
+
+lengthFunction
+	:	length_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	;
+
+locateFunction
+	:	locate_keyword^ LEFT_PAREN! expression COMMA! expression ( COMMA! expression )? RIGHT_PAREN!
+	;
+
+absFunction
+	:	abs_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	;
+
+sqrtFunction
+	:	sqrt_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	;
+
+modFunction
+	:	mod_keyword^ LEFT_PAREN! expression COMMA! expression RIGHT_PAREN!
+	;
+
+currentDateFunction
+	:	current_date_keyword ( LEFT_PAREN! RIGHT_PAREN! )?
+	;
+
+currentTimeFunction
+	:	current_time_keyword ( LEFT_PAREN! RIGHT_PAREN! )?
+	;
+
+currentTimestampFunction
+	:	current_timestamp_keyword ( LEFT_PAREN! RIGHT_PAREN! )?
+	;
+
+extractFunction
+	:	extract_keyword^ LEFT_PAREN! extractField from_keyword! expression RIGHT_PAREN!
+	;
+
+extractField
+	:	datetimeField
+	|	timeZoneField
+	;
+
+datetimeField
+	:	nonSecondDatetimeField
+	|	second_keyword
+	;
+
+nonSecondDatetimeField
+	:	year_keyword
+	|	month_keyword
+	|	day_keyword
+	|	hour_keyword
+	|	minute_keyword
+	;
+
+timeZoneField
+	:	timezone_hour_keyword
+	|	timezone_minute_keyword
+	;
+
+positionFunction
+	:	position_keyword^ LEFT_PAREN! expression in_keyword! expression RIGHT_PAREN!
+	;
+
+charLengthFunction
+	:	character_length_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	;
+
+octetLengthFunction
+	:	octet_length_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	;
+
+bitLengthFunction
+	:	bit_length_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	;
+
+
+generalFunction
+    : generalFunctionName LEFT_PAREN functionArgumentList RIGHT_PAREN
+          -> ^( GENERAL_FUNCTION_CALL[$generalFunctionName.start,$generalFunctionName.text] functionArgumentList )
+    ;
+
+generalFunctionName :
+    IDENTIFIER ( DOT IDENTIFIER )+
+;
 
 /**
- * Recognition rule for a function call
+ * Recognition rule used to "wrap" all function arguments into a GENERAL_FUNCTION_ARGUMENTS node
  */
-functionCall
-@after { $tree = resolveFunction( $tree ); }
-	: functionName OPEN_PAREN functionParameterList CLOSE_PAREN -> ^( functionName functionParameterList )
-	;
-
-/**
- * A function-name is an IDENTIFIER followed by zero or more (DOT IDENTIFIER) sequences
- */
-functionName returns [String nameText]
-	: i=IDENTIFIER { $nameText = $i.text; } ( '.' i=IDENTIFIER { $nameText += ( '.' + $i.text ); } )+
-	;
-
-/**
- * Recognition rule used to "wrap" all function parameters into an EXPR_LIST node
- */
-functionParameterList
-	: functionParameter ( COMMA functionParameter )* -> ^( EXPR_LIST functionParameter+ )
-	;
+functionArgumentList :
+    functionArgument ( COMMA functionArgument )*
+        -> ^( GENERAL_FUNCTION_ARGUMENTS functionArgument+ )
+;
 
 
 /**
  * Recognized function parameters.
  */
-functionParameter :
+functionArgument :
     expression
-    | numericLiteral
-    | qs=STRING_LITERAL -> { quotedString( $qs ) }
+    | literal
 ;
 
-numericLiteral
-	: HEX_LITERAL
-	| OCTAL_LITERAL
-	| DECIMAL_LITERAL
-	| FLOATING_POINT_LITERAL
+literal
+	:	numeric_literal
+	|	HEX_LITERAL
+	|	OCTAL_LITERAL
+	|	CHARACTER_LITERAL
+	|	STRING_LITERAL
 	;
 
+numeric_literal
+	:	INTEGER_LITERAL
+	|	DECIMAL_LITERAL
+	|	FLOATING_POINT_LITERAL
+	;
 
 /**
  * Reconition rule for what ANSI SQL terms the <tt>collation specification</tt> used to allow specifying that sorting for
  * the given {@link #sortSpecification} be treated within a specific character-set.
  */
-collationSpecification! :
-    collateKeyword collationName -> { createTreeNode(COLLATE, $collationName.text) }
+collationSpecification!
+    : collateKeyword collationName
+        -> COLLATE[$collateKeyword.start,$collationName.text]
 ;
 
-collateKeyword
-	: {(validateIdentifierAsKeyword("collate"))}?=>  id=IDENTIFIER
+collateKeyword :
+    {(validateSoftKeyword("collate"))}?=>  id=IDENTIFIER
 		->	COLLATE[$id]
-
-	;
+;
 
 /**
  * The collation name wrt {@link #collationSpecification}.  Namely, the character-set.
  */
-collationName
-	: IDENTIFIER
-	;
+collationName :
+    IDENTIFIER
+;
 
 /**
  * Reconition rule for what ANSI SQL terms the <tt>ordering specification</tt>; <tt>ASCENDING</tt> or
  * <tt>DESCENDING</tt>.
  */
-orderingSpecification!
-	: ( 'asc' | 'ascending' ) -> { createTreeNode(ORDER_SPEC,"asc") }
-    | ( 'desc' | 'descending') -> { createTreeNode(ORDER_SPEC,"desc" ) }
+orderingSpecification! :
+    ascending_keyword
+        -> ORDER_SPEC[$ascending_keyword.start,"asc"]
+    | descending_keyword
+        -> ORDER_SPEC[$descending_keyword.start,"desc"]
+;
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Soft-keyword handling rules
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+abs_keyword
+	:	{(validateSoftKeyword("abs"))}?=>  id=IDENTIFIER
+		->	ABS[$id]
 	;
 
-/**
- * A simple-property-path is an IDENTIFIER followed by one or more (DOT IDENTIFIER) sequences
- */
-simplePropertyPath
-@after { $tree = resolveIdent($tree); }
-	: p=simplePropertyPathText -> { createTreeNode(IDENTIFIER, $p.pathText) }
+as_keyword
+	:	{(validateSoftKeyword("as"))}?=>  id=IDENTIFIER
+		->	AS[$id]
 	;
 
-simplePropertyPathText returns [String pathText]
-	: i=IDENTIFIER { $pathText = $i.text; } ( '.' i=IDENTIFIER { $pathText += ( '.' + $i.text ); } )+
+ascending_keyword :
+    {(validateSoftKeyword("ascending") || validateSoftKeyword("asc"))}?=>  IDENTIFIER
+;
+
+bit_length_keyword
+	:	{(validateSoftKeyword("bit_length"))}?=>  id=IDENTIFIER
+		->	BIT_LENGTH[$id]
 	;
 
-
-
-// Lexer rules ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-WS
-    : (SPACE | EOL | '\u000C') { $channel=HIDDEN; }
-    ;
-
-fragment
-EOL
-    : ( '\r' (options{greedy=true;}: '\n')? | '\n' )
-    ;
-
-fragment
-SPACE
-    : ' '
-    | '\t'
-    ;
-
-OPEN_PAREN
-    : '('
-    ;
-CLOSE_PAREN
-    : ')'
-    ;
-
-COMMA
-    : ','
-    ;
-
-HARD_QUOTE
-    : '`'
-    ;
-
-INTEGER_LITERAL
-    : (
-        '0'
-        | '1'..'9' ('0'..'9')*
-    )
-    ;
-
-DECIMAL_LITERAL : ('0' | '1'..'9' '0'..'9'*) INTEGER_TYPE_SUFFIX ;
-
-HEX_LITERAL
-    : '0' ('x'|'X') HEX_DIGIT+ INTEGER_TYPE_SUFFIX?
-    ;
-
-OCTAL_LITERAL : '0' ('0'..'7')+ INTEGER_TYPE_SUFFIX? ;
-
-
-fragment
-HEX_DIGIT : ('0'..'9'|'a'..'f'|'A'..'F') ;
-
-fragment
-INTEGER_TYPE_SUFFIX : ('l'|'L') ;
-
-FLOATING_POINT_LITERAL
-    :   ('0'..'9')+ '.' ('0'..'9')* EXPONENT? FLOAT_TYPE_SUFFIX?
-    |   '.' ('0'..'9')+ EXPONENT? FLOAT_TYPE_SUFFIX?
-    |   ('0'..'9')+ EXPONENT FLOAT_TYPE_SUFFIX?
-    |   ('0'..'9')+ FLOAT_TYPE_SUFFIX
-    ;
-
-fragment
-EXPONENT : ('e'|'E') ('+'|'-')? ('0'..'9')+ ;
-
-fragment
-FLOAT_TYPE_SUFFIX : ('f'|'F'|'d'|'D') ;
-
-
-STRING_LITERAL
-    :   '\'' ( ESCAPE_SEQUENCE | ~('\''|'\\') ) '\''
-    ;
-
-fragment
-ESCAPE_SEQUENCE
-    :   '\\' ('b'|'t'|'n'|'f'|'r'|'\"'|'\''|'\\')
-    |   UNICODE_ESCAPE
-    |   OCTAL_ESCAPE
-    ;
-
-fragment
-OCTAL_ESCAPE
-    :   '\\' ('0'..'3') ('0'..'7') ('0'..'7')
-    |   '\\' ('0'..'7') ('0'..'7')
-    |   '\\' ('0'..'7')
-    ;
-
-fragment
-UNICODE_ESCAPE
-    :   '\\' 'u' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT
-    ;
-
-IDENTIFIER
-	: IDENTIFIER_START_FRAGMENT (IDENTIFER_FRAGMENT)*
+both_keyword
+	:	{(validateSoftKeyword("both"))}?=>  id=IDENTIFIER
+		->	BOTH[$id]
 	;
 
-fragment
-IDENTIFIER_START_FRAGMENT
-    : ('a'..'z'|'A'..'Z'|'_'|'$'|'\u0080'..'\ufffe')
-    ;
+cast_keyword
+	:	{(validateSoftKeyword("cast"))}?=>  id=IDENTIFIER
+		->	CAST[$id]
+	;
 
-fragment
-IDENTIFER_FRAGMENT
-    : IDENTIFIER_START_FRAGMENT
-    | '0'..'9'
-    ;
+character_length_keyword
+	:	{(validateSoftKeyword("character_length") || validateSoftKeyword("char_length"))}?=>  id=IDENTIFIER
+		->	CHARACTER_LENGTH[$id]
+	;
+
+concat_keyword
+	:	{(validateSoftKeyword("concat"))}?=>  id=IDENTIFIER
+		->	CONCAT[$id]
+	;
+
+current_date_keyword
+	:	{(validateSoftKeyword("current_date"))}?=>  id=IDENTIFIER
+		->	CURRENT_DATE[$id]
+	;
+
+current_time_keyword
+	:	{(validateSoftKeyword("current_time"))}?=>  id=IDENTIFIER
+		->	CURRENT_TIME[$id]
+	;
+
+current_timestamp_keyword
+	:	{(validateSoftKeyword("current_timestamp"))}?=>  id=IDENTIFIER
+		->	CURRENT_TIMESTAMP[$id]
+	;
+
+day_keyword
+	:	{(validateSoftKeyword("day"))}?=>  id=IDENTIFIER
+		->	DAY[$id]
+	;
+
+descending_keyword :
+    {(validateSoftKeyword("descending") || validateSoftKeyword("desc"))}?=>  IDENTIFIER
+;
+
+extract_keyword
+	:	{(validateSoftKeyword("extract"))}?=>  id=IDENTIFIER
+		->	EXTRACT[$id]
+	;
+
+from_keyword
+	:	{(validateSoftKeyword("from"))}?=>  id=IDENTIFIER
+		->	FROM[$id]
+	;
+
+hour_keyword
+	:	{(validateSoftKeyword("hour"))}?=>  id=IDENTIFIER
+		->	HOUR[$id]
+	;
+
+in_keyword
+	:	{(validateSoftKeyword("in"))}?=>  id=IDENTIFIER
+		->	IN[$id]
+	;
+leading_keyword
+	:	{(validateSoftKeyword("leading"))}?=>  id=IDENTIFIER
+		->	LEADING[$id]
+	;
+
+length_keyword
+	:	{(validateSoftKeyword("length"))}?=>  id=IDENTIFIER
+		->	LENGTH[$id]
+	;
+
+locate_keyword
+	:	{(validateSoftKeyword("locate"))}?=>  id=IDENTIFIER
+		->	LOCATE[$id]
+	;
+
+lower_keyword
+	:	{(validateSoftKeyword("lower"))}?=>  id=IDENTIFIER
+		->	LOWER[$id]
+	;
+
+minute_keyword
+	:	{(validateSoftKeyword("minute"))}?=>  id=IDENTIFIER
+		->	MINUTE[$id]
+	;
+
+mod_keyword
+	:	{(validateSoftKeyword("mod"))}?=>  id=IDENTIFIER
+		->	MOD[$id]
+	;
+
+month_keyword
+	:	{(validateSoftKeyword("month"))}?=>  id=IDENTIFIER
+		->	MONTH[$id]
+	;
+
+octet_length_keyword
+	:	{(validateSoftKeyword("octet_length"))}?=>  id=IDENTIFIER
+		->	OCTET_LENGTH[$id]
+	;
+
+position_keyword
+	:	{(validateSoftKeyword("position"))}?=>  id=IDENTIFIER
+		->	POSITION[$id]
+	;
+
+second_keyword
+	:	{(validateSoftKeyword("second"))}?=>  id=IDENTIFIER
+		->	SECOND[$id]
+	;
+
+sqrt_keyword
+	:	{(validateSoftKeyword("sqrt"))}?=>  id=IDENTIFIER
+		->	SQRT[$id]
+	;
+
+substring_keyword
+	:	{(validateSoftKeyword("substring"))}?=>  id=IDENTIFIER
+		->	SUBSTRING[$id]
+	;
+
+timezone_hour_keyword
+	:	{(validateSoftKeyword("timezone_hour"))}?=>  id=IDENTIFIER
+		->	TIMEZONE_HOUR[$id]
+	;
+
+timezone_minute_keyword
+	:	{(validateSoftKeyword("timezone_minute"))}?=>  id=IDENTIFIER
+		->	TIMEZONE_MINUTE[$id]
+	;
+
+trailing_keyword
+	:	{(validateSoftKeyword("trailing"))}?=>  id=IDENTIFIER
+		->	TRAILING[$id]
+	;
+
+trim_keyword
+	:	{(validateSoftKeyword("trim"))}?=>  id=IDENTIFIER
+		->	TRIM[$id]
+	;
+
+upper_keyword
+	:	{(validateSoftKeyword("upper"))}?=>  id=IDENTIFIER
+		->	UPPER[$id]
+	;
+
+year_keyword
+	:	{(validateSoftKeyword("year"))}?=>  id=IDENTIFIER
+		->	YEAR[$id]
+	;
 
