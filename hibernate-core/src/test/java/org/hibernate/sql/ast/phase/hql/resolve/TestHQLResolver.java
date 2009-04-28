@@ -12,8 +12,9 @@ import org.hibernate.cfg.Environment;
 import org.hibernate.dialect.HSQLDialect;
 import org.hibernate.engine.SessionFactoryImplementor;
 import org.hibernate.hql.classic.ClassicQueryTranslatorFactory;
-import org.hibernate.sql.ast.phase.hql.parse.HQLLexer;
-import org.hibernate.sql.ast.phase.hql.parse.HQLParser;
+import org.hibernate.sql.ast.origin.hql.resolve.HQLResolver;
+import org.hibernate.sql.ast.origin.hql.parse.HQLParser;
+import org.hibernate.sql.ast.origin.hql.parse.HQLLexer;
 
 public class TestHQLResolver extends TestCase {
 

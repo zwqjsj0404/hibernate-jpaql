@@ -1,0 +1,49 @@
+group GenericSQL;
+
+
+orderByClause(sortSpecifications) ::= <<
+order by <orderByFragment(sortSpecifications)>
+>>
+
+orderByFragment(sortSpecifications) ::= <<
+<sortSpecifications; separator=", ">
+>>
+
+sortSpecification(sortKey,collationSpecification,orderingSpecification) ::= <<
+<sortKey> <collationSpecification> <orderingSpecification>
+>>
+
+
+<! ------------------------------------------------------------------------- !>
+<! UPDATE statement related templates !>
+<! ------------------------------------------------------------------------- !>
+updateStatement(table,assignments,whereClause) ::= <<
+update <table> set <assignments; separator=", "> <whereClause>
+>>
+
+assignment(target,value) ::= <<
+<target> = <value>
+>>
+
+<! ------------------------------------------------------------------------- !>
+<! DELETE statement related templates !>
+<! ------------------------------------------------------------------------- !>
+deleteStatement(table,whereClause) ::= <<
+delete <table> <whereClause>
+>>
+
+<! ------------------------------------------------------------------------- !>
+<! table/table-expression related templates
+<! ------------------------------------------------------------------------- !>
+tableExpression(name,alias) ::= <<
+<name><alias>
+>>
+
+tableName(name) ::= <<
+<name>
+>>
+
+tableAliasDeclaration(alias) ::= <<
+</ >as <alias>
+<<
+

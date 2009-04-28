@@ -191,23 +191,22 @@ public class TreePrinter {
 		}
 
 		StringBuffer buf = new StringBuffer();
-		buf.append( "[" ).append( getTokenTypeName( tree.getType() ) ).append( "] " );
+		buf.append( "[" ).append( getTokenTypeName( tree.getType() ) );
 		if ( showClassNames ) {
-			buf.append( StringHelper.unqualify( tree.getClass().getName() ) ).append( ": " );
+			buf.append( " (" ).append( StringHelper.unqualify( tree.getClass().getName() ) ).append( ')' );
 		}
+		buf.append( "] " );
 
-        buf.append( "'" );
         String text = tree.getText();
-		if ( text == null ) {
-			text = "{text:null}";
+		if ( text != null ) {
+        	buf.append( "'" );
+			appendEscapedMultibyteChars( text, buf );
+        	buf.append( "'" );
 		}
-		appendEscapedMultibyteChars(text, buf);
-        buf.append( "'" );
 
         if ( tree instanceof DisplayableNode ) {
             DisplayableNode displayableNode = ( DisplayableNode ) tree;
-            // Add a space before the display text.
-            buf.append( " " ).append( displayableNode.getDisplayText() );
+            buf.append( " => " ).append( displayableNode.getDisplayText() );
         }
         return buf.toString();
     }

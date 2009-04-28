@@ -30,9 +30,9 @@ import java.util.StringTokenizer;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.function.SQLFunctionRegistry;
 import org.hibernate.util.StringHelper;
-import org.hibernate.sql.ast.ordering.ColumnMapper;
-import org.hibernate.sql.ast.ordering.TranslationContext;
-import org.hibernate.sql.ast.ordering.OrderByFragmentTranslator;
+import org.hibernate.sql.ast.origin.ordering.ColumnMapper;
+import org.hibernate.sql.ast.origin.ordering.TranslationContext;
+import org.hibernate.sql.ast.origin.ordering.OrderByFragmentTranslator;
 import org.hibernate.engine.SessionFactoryImplementor;
 
 /**

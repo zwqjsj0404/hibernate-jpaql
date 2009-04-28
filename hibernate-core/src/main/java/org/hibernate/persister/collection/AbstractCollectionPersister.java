@@ -80,7 +80,7 @@ import org.hibernate.sql.Alias;
 import org.hibernate.sql.SelectFragment;
 import org.hibernate.sql.SimpleSelect;
 import org.hibernate.sql.Template;
-import org.hibernate.sql.ast.ordering.ColumnMapper;
+import org.hibernate.sql.ast.origin.ordering.ColumnMapper;
 import org.hibernate.type.AbstractComponentType;
 import org.hibernate.type.CollectionType;
 import org.hibernate.type.EntityType;
