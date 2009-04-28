@@ -21,11 +21,19 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-package org.hibernate.sql.ast.phase.hql.domain;
+package org.hibernate.sql.ast.origin.hql.domain;
 
 /**
  * @author Gavin King
  */
-public class Lizard extends Reptile {
+public class DomesticAnimal extends Mammal {
+	private Human owner;
 
+	public Human getOwner() {
+		return owner;
+	}
+
+	public void setOwner(Human owner) {
+		this.owner = owner;
+	}
 }

@@ -1,4 +1,4 @@
-package org.hibernate.sql.ast.phase.hql.resolve;
+package org.hibernate.sql.ast.origin.hql.resolve;
 
 import junit.framework.TestCase;
 

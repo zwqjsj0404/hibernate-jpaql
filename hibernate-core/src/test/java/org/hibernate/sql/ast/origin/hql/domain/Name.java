@@ -21,39 +21,49 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-package org.hibernate.sql.ast.phase.hql.domain;
+package org.hibernate.sql.ast.origin.hql.domain;
 
 /**
- * Implementation of Joiner.
- *
- * @author Steve Ebersole
+ * @author Gavin King
  */
-public class Joiner {
-	private Long id;
-	private String name;
-	private String joinedName;
-
-	public Long getId() {
-		return id;
+public class Name {
+	private String first;
+	private Character initial;
+	private String last;
+	
+	protected Name() {}
+	
+	public Name(String first, Character initial, String last) {
+		this.first = first;
+		this.initial = initial;
+		this.last = last;
 	}
 
-	public void setId(Long id) {
-		this.id = id;
+	public Name(String first, char initial, String last) {
+		this( first, new Character( initial ), last );
 	}
 
-	public String getName() {
-		return name;
+	public String getFirst() {
+		return first;
 	}
 
-	public void setName(String name) {
-		this.name = name;
+	public void setFirst(String first) {
+		this.first = first;
 	}
 
-	public String getJoinedName() {
-		return joinedName;
+	public Character getInitial() {
+		return initial;
 	}
 
-	public void setJoinedName(String joinedName) {
-		this.joinedName = joinedName;
+	public void setInitial(Character initial) {
+		this.initial = initial;
+	}
+
+	public String getLast() {
+		return last;
+	}
+
+	public void setLast(String last) {
+		this.last = last;
 	}
 }

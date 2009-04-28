@@ -21,32 +21,39 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-package org.hibernate.sql.ast.phase.hql.domain;
-
-import java.util.Date;
+package org.hibernate.sql.ast.origin.hql.domain;
 
 /**
- * @author Gavin King
+ * Implementation of Joiner.
+ *
+ * @author Steve Ebersole
  */
-public class Mammal extends Animal {
-	private boolean pregnant;
-	private Date birthdate;
+public class Joiner {
+	private Long id;
+	private String name;
+	private String joinedName;
 
-	public boolean isPregnant() {
-		return pregnant;
+	public Long getId() {
+		return id;
 	}
 
-	public void setPregnant(boolean pregnant) {
-		this.pregnant = pregnant;
+	public void setId(Long id) {
+		this.id = id;
 	}
 
-	public Date getBirthdate() {
-		return birthdate;
+	public String getName() {
+		return name;
 	}
-	
 
-	public void setBirthdate(Date birthdate) {
-		this.birthdate = birthdate;
+	public void setName(String name) {
+		this.name = name;
 	}
-	
+
+	public String getJoinedName() {
+		return joinedName;
+	}
+
+	public void setJoinedName(String joinedName) {
+		this.joinedName = joinedName;
+	}
 }

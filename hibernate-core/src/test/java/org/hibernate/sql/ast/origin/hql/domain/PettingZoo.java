@@ -21,39 +21,10 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-package org.hibernate.sql.ast.phase.hql.domain;
+package org.hibernate.sql.ast.origin.hql.domain;
 
 /**
- * Implementation of StateProvince.
- *
- * @author Steve Ebersole
+ * @author Gavin King
  */
-public class StateProvince {
-	private Long id;
-	private String name;
-	private String isoCode;
-
-	public Long getId() {
-		return id;
-	}
-
-	public void setId(Long id) {
-		this.id = id;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
-
-	public String getIsoCode() {
-		return isoCode;
-	}
-
-	public void setIsoCode(String isoCode) {
-		this.isoCode = isoCode;
-	}
+public class PettingZoo extends Zoo {
 }

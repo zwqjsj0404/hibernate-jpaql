@@ -21,10 +21,10 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-package org.hibernate.sql.ast.phase.hql.domain;
+package org.hibernate.sql.ast.origin.hql.domain;
 
 /**
  * @author Gavin King
  */
-public class Cat extends DomesticAnimal {
+public class Dog extends DomesticAnimal {
 }

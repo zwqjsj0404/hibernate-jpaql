@@ -21,57 +21,10 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-package org.hibernate.sql.ast.phase.hql.domain;
+package org.hibernate.sql.ast.origin.hql.domain;
 
 /**
- * Implementation of Address.
- *
- * @author Steve Ebersole
+ * @author Gavin King
  */
-public class Address {
-	private String street;
-	private String city;
-	private String postalCode;
-	private String country;
-	private StateProvince stateProvince;
-
-	public String getStreet() {
-		return street;
-	}
-
-	public void setStreet(String street) {
-		this.street = street;
-	}
-
-	public String getCity() {
-		return city;
-	}
-
-	public void setCity(String city) {
-		this.city = city;
-	}
-
-	public String getPostalCode() {
-		return postalCode;
-	}
-
-	public void setPostalCode(String postalCode) {
-		this.postalCode = postalCode;
-	}
-
-	public String getCountry() {
-		return country;
-	}
-
-	public void setCountry(String country) {
-		this.country = country;
-	}
-
-	public StateProvince getStateProvince() {
-		return stateProvince;
-	}
-
-	public void setStateProvince(StateProvince stateProvince) {
-		this.stateProvince = stateProvince;
-	}
+public class Cat extends DomesticAnimal {
 }

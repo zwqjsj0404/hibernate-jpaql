@@ -21,19 +21,17 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-package org.hibernate.sql.ast.phase.hql.domain;
+package org.hibernate.sql.ast.origin.hql.domain;
 
 /**
  * @author Gavin King
  */
-public class DomesticAnimal extends Mammal {
-	private Human owner;
-
-	public Human getOwner() {
-		return owner;
+public class Reptile extends Animal {
+	private float bodyTemperature;
+	public float getBodyTemperature() {
+		return bodyTemperature;
 	}
-
-	public void setOwner(Human owner) {
-		this.owner = owner;
+	public void setBodyTemperature(float bodyTemperature) {
+		this.bodyTemperature = bodyTemperature;
 	}
 }

@@ -21,49 +21,32 @@
  * 51 Franklin Street, Fifth Floor
  * Boston, MA  02110-1301  USA
  */
-package org.hibernate.sql.ast.phase.hql.domain;
+package org.hibernate.sql.ast.origin.hql.domain;
+
+import java.util.Date;
 
 /**
  * @author Gavin King
  */
-public class Name {
-	private String first;
-	private Character initial;
-	private String last;
+public class Mammal extends Animal {
+	private boolean pregnant;
+	private Date birthdate;
+
+	public boolean isPregnant() {
+		return pregnant;
+	}
+
+	public void setPregnant(boolean pregnant) {
+		this.pregnant = pregnant;
+	}
+
+	public Date getBirthdate() {
+		return birthdate;
+	}
 	
-	protected Name() {}
+
+	public void setBirthdate(Date birthdate) {
+		this.birthdate = birthdate;
+	}
 	
-	public Name(String first, Character initial, String last) {
-		this.first = first;
-		this.initial = initial;
-		this.last = last;
-	}
-
-	public Name(String first, char initial, String last) {
-		this( first, new Character( initial ), last );
-	}
-
-	public String getFirst() {
-		return first;
-	}
-
-	public void setFirst(String first) {
-		this.first = first;
-	}
-
-	public Character getInitial() {
-		return initial;
-	}
-
-	public void setInitial(Character initial) {
-		this.initial = initial;
-	}
-
-	public String getLast() {
-		return last;
-	}
-
-	public void setLast(String last) {
-		this.last = last;
-	}
 }
