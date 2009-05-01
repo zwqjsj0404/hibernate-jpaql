@@ -33,7 +33,12 @@ import org.hibernate.sql.ast.origin.hql.parse.HQLLexer;
 
 import org.antlr.runtime.ANTLRStringStream;
 import org.antlr.runtime.CommonTokenStream;
+import org.antlr.runtime.RecognitionException;
 import org.antlr.runtime.tree.Tree;
+import org.antlr.runtime.tree.CommonTreeNodeStream;
+import org.antlr.stringtemplate.StringTemplateGroup;
+import org.antlr.stringtemplate.CommonGroupLoader;
+import org.antlr.stringtemplate.StringTemplateErrorListener;
 
 /**
  * A translator which coordinates translation of an <tt>order-by</tt> mapping.
@@ -58,13 +63,14 @@ public class OrderByFragmentTranslator {
 	 */
 	public String render(String fragment) {
 		HQLLexer lexer = new HQLLexer( new ANTLRStringStream( fragment ) );
-		OrderByFragmentParser parser = new OrderByFragmentParser( new CommonTokenStream( lexer ), context );
+		ContextualOrderByParser parser = new ContextualOrderByParser( new CommonTokenStream( lexer ), context );
+		Tree orderByTree;
 		try {
-            Tree tree = ( Tree ) parser.orderByFragment().getTree();
+            orderByTree = ( Tree ) parser.orderByFragment().getTree();
 
             if ( log.isTraceEnabled() ) {
                 TreePrinter printer = new TreePrinter( OrderByParser.class );
-                log.trace( printer.renderAsString( tree, "--- {order-by fragment} ---" ) );
+                log.trace( printer.renderAsString( orderByTree, "--- {order-by fragment} ---" ) );
             }
 		}
 		catch ( HibernateException e ) {
@@ -74,18 +80,29 @@ public class OrderByFragmentTranslator {
 			throw new HibernateException( "Unable to parse order-by fragment", t );
 		}
 
-//		OrderByFragmentRenderer renderer = new OrderByFragmentRenderer();
-//		try {
-//			renderer.orderByFragment( parser.getAST() );
-//		}
-//		catch ( HibernateException e ) {
-//			throw e;
-//		}
-//		catch ( Throwable t ) {
-//			throw new HibernateException( "Unable to render parsed order-by fragment", t );
-//		}
-//
-//		return renderer.getRenderedFragment();
-        return null;
+		// Load the string templates...
+		CommonGroupLoader groupLoader = new CommonGroupLoader(
+				"org/hibernate/sql/ast/template/",
+				new StringTemplateErrorListener() {
+					public void error(String s, Throwable throwable) {
+						throw new RuntimeException( s, throwable );
+					}
+
+					public void warning(String s) {
+						System.out.println( "GROUP-LOADER : " + s );
+					}
+				}
+		);
+		StringTemplateGroup.registerGroupLoader( groupLoader );
+		StringTemplateGroup stringTemplateGroup = groupLoader.loadGroup( "OrderBy" );
+		ContextualOrderByRenderer renderer = new ContextualOrderByRenderer( new CommonTreeNodeStream( orderByTree ), context, stringTemplateGroup );
+
+		try {
+			return renderer.orderByFragment().st.toString();
+		}
+		catch ( RecognitionException e ) {
+			throw new HibernateException( "Unable to render order-by fragment", e );
+		}
+
 	}
 }

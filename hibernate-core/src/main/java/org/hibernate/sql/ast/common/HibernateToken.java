@@ -58,12 +58,23 @@ public class HibernateToken extends CommonToken {
 	 */
 	public HibernateToken(Token oldToken) {
 		super( oldToken );
-		if ( null != oldToken
-				&& ( oldToken.getClass().equals( CommonToken.class ) || oldToken
-				.getClass().equals( HibernateToken.class ) ) ) {
-			start = ( ( CommonToken ) oldToken ).getStartIndex();
-			stop = ( ( CommonToken ) oldToken ).getStopIndex();
+		if ( null != oldToken && CommonToken.class.isInstance( oldToken ) ) {
+			setStartIndex( ( ( CommonToken ) oldToken ).getStartIndex() );
+			setStopIndex( ( ( CommonToken ) oldToken ).getStopIndex() );
 		}
 	}
 
+	/**
+	 * Constructor form used to track origination position information via the passed
+	 * 'oldToken' param, but to utilize a new token type and text.
+	 *
+	 * @param oldToken The original token type (used for position tracking info).
+	 * @param type The type of the new (this) token
+	 * @param text The test of the new (this) token.
+	 */
+	public HibernateToken(Token oldToken, int type, String text) {
+		this( oldToken );
+		setType( type );
+		setText( text );
+	}
 }

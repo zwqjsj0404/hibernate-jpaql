@@ -1,9 +1,10 @@
 parser grammar OrderByParser;
 
 options {
-	tokenVocab=HQLLexer;
-	output=AST;
-	ASTLabelType=CommonTree;
+	tokenVocab = HQLLexer;
+	output = AST;
+	TokenLabelType = CommonToken;
+	ASTLabelType = CommonTree;
 }
 
 @parser::header {
@@ -82,7 +83,7 @@ import org.hibernate.sql.Template;
         throw new UnsupportedOperationException( "must be overridden!" );
     }
 
-	private boolean validateSoftKeyword(String text) {
+    private boolean validateSoftKeyword(String text) {
 		return validateLT(1, text);
 	}
 
@@ -107,37 +108,38 @@ import org.hibernate.sql.Template;
 /**
  * Main recognition rule for this grammar
  */
-orderByFragment :
-    sortSpecification ( COMMA sortSpecification )*
+orderByFragment
+    : sortSpecification ( COMMA sortSpecification )*
         -> ^( ORDER_BY sortSpecification+ )
-;
+    ;
 
 
 /**
  * Reconition rule for what ANSI SQL terms the <tt>sort specification</tt>.  These are the atomic elements of the
  * <tt>ORDER BY</tt> list pieces.
  */
-sortSpecification :
-    sortKey collationSpecification? orderingSpecification?
+sortSpecification
+    : sortKey collationSpecification? orderingSpecification?
         -> ^( SORT_SPEC sortKey collationSpecification? orderingSpecification? )
-;
+    ;
 
 
 /**
  * Reconition rule for what ANSI SQL terms the <tt>sort key</tt> which is the expression (column, function, etc) upon
  * which to base the sorting.
  */
-sortKey :
-    expression
-;
+sortKey
+    : expression
+    ;
 
 /**
  * Reconition rule what this grammar recognizes as valid <tt>sort key</tt>.
  */
 expression
-    : QUOTED_IDENTIFIER -> ^( COLUMN[$QUOTED_IDENTIFIER] ALIAS_REF[Template.TEMPLATE] QUOTED_IDENTIFIER[$QUOTED_IDENTIFIER] )
+    : QUOTED_IDENTIFIER -> ^( COLUMN ALIAS_REF[Template.TEMPLATE] QUOTED_IDENTIFIER[$QUOTED_IDENTIFIER] )
     // we treat the so-called standard functions differently because they are handled differently by the HQL lexer which we also use here...
     | standardFunction
+    | literal
     // not identDotIdentStructure because we dont want QUOTED_IDENTIFIERs is here
     | ( IDENTIFIER ( DOT IDENTIFIER )* LEFT_PAREN ) => generalFunction
     // otherwise we fully expect a dot-identifier series, and then we just need to decode the semantic of that structure
@@ -191,7 +193,7 @@ standardFunction
 
 castFunction
 	: cast_keyword LEFT_PAREN expression as_keyword dataType RIGHT_PAREN
-	    -> ^( FUNCTION[$cast_keyword.start,$cast_keyword.text] expression as_keyword dataType )
+	    -> ^( cast_keyword expression dataType )
 	;
 
 fragment
@@ -201,17 +203,18 @@ dataType
 
 concatFunction
 	: concat_keyword LEFT_PAREN expression ( COMMA expression )+ RIGHT_PAREN
-	    -> ^( FUNCTION[$concat_keyword.start,$concat_keyword.text] expression+ )
+	    -> ^( concat_keyword expression+ )
 	;
 
 substringFunction
 	: substring_keyword LEFT_PAREN expression COMMA expression ( COMMA expression)? RIGHT_PAREN
-	    -> ^( FUNCTION[$substring_keyword.start,$substring_keyword.text] expression+ )
+	    -> ^( substring_keyword expression+ )
 	;
 
 trimFunction
+    // todo : dont like the creation of subtree(s) for the operands in the trimOperands rule
 	: trim_keyword LEFT_PAREN trimOperands RIGHT_PAREN
-	    -> ^( FUNCTION[$trim_keyword.start,$trim_keyword.text] trimOperands )
+	    -> ^( trim_keyword trimOperands )
 	;
 
 fragment
@@ -220,106 +223,117 @@ options{
 k=2;
 }
 @init {boolean hasSecondExpression = false;}
-	:	trimSpecification from_keyword expression -> ^(trimSpecification STRING_LITERAL[" "] expression)
-	|	trimSpecification expression from_keyword expression -> ^(trimSpecification expression+)
-	|	from_keyword expression -> ^(BOTH STRING_LITERAL[" "] expression)
-	|	cn=expression ( from_keyword expression {hasSecondExpression = true;} )?
-		-> {hasSecondExpression}? ^(BOTH expression+)
-		-> ^(BOTH STRING_LITERAL[" "] $cn)
+	: trimSpecification from_keyword expression
+	    -> ^( trimSpecification STRING_LITERAL["' '"] expression)
+	| trimSpecification expression from_keyword expression
+	    -> ^(trimSpecification expression+)
+	| from_keyword expression
+	    -> ^(BOTH STRING_LITERAL["' '"] expression)
+	| cn=expression ( from_keyword expression {hasSecondExpression = true;} )?
+	    -> {hasSecondExpression}? ^(BOTH expression+)
+		-> ^(BOTH STRING_LITERAL["' '"] $cn)
 	;
 
 fragment
 trimSpecification
-	:	leading_keyword
-	|	trailing_keyword
-	|	both_keyword
+	: leading_keyword
+	| trailing_keyword
+	| both_keyword
 	;
 
 upperFunction
 	: upper_keyword LEFT_PAREN expression RIGHT_PAREN
-	    -> ^( FUNCTION[$upper_keyword.start,$upper_keyword.text] expression )
+	    -> ^( upper_keyword expression )
 	;
 
 lowerFunction
 	: lower_keyword LEFT_PAREN expression RIGHT_PAREN
-	    -> ^( FUNCTION[$lower_keyword.start,$lower_keyword.text] expression )
+	    -> ^( lower_keyword expression )
 	;
 
 lengthFunction
 	: length_keyword LEFT_PAREN expression RIGHT_PAREN
-	    -> ^( FUNCTION[$length_keyword.start,$length_keyword.text] expression )
+	    -> ^( length_keyword expression )
 	;
 
 locateFunction
 	: locate_keyword LEFT_PAREN expression COMMA expression ( COMMA expression )? RIGHT_PAREN
-	    -> ^( FUNCTION[$locate_keyword.start,$locate_keyword.text] expression+ )
+	    -> ^( locate_keyword expression+ )
 	;
 
 absFunction
-	:	abs_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	: abs_keyword LEFT_PAREN expression RIGHT_PAREN
+	    -> ^( abs_keyword expression )
 	;
 
 sqrtFunction
-	:	sqrt_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	: sqrt_keyword LEFT_PAREN expression RIGHT_PAREN
+	    -> ^( sqrt_keyword expression )
 	;
 
 modFunction
-	:	mod_keyword^ LEFT_PAREN! expression COMMA! expression RIGHT_PAREN!
+	: mod_keyword LEFT_PAREN expression COMMA expression RIGHT_PAREN
+	    -> ^( mod_keyword expression+ )
 	;
 
 currentDateFunction
-	:	current_date_keyword ( LEFT_PAREN! RIGHT_PAREN! )?
+	: current_date_keyword ( LEFT_PAREN! RIGHT_PAREN! )?
 	;
 
 currentTimeFunction
-	:	current_time_keyword ( LEFT_PAREN! RIGHT_PAREN! )?
+	: current_time_keyword ( LEFT_PAREN! RIGHT_PAREN! )?
 	;
 
 currentTimestampFunction
-	:	current_timestamp_keyword ( LEFT_PAREN! RIGHT_PAREN! )?
+	: current_timestamp_keyword ( LEFT_PAREN! RIGHT_PAREN! )?
 	;
 
 extractFunction
-	:	extract_keyword^ LEFT_PAREN! extractField from_keyword! expression RIGHT_PAREN!
+	: extract_keyword LEFT_PAREN extractField from_keyword expression RIGHT_PAREN
+	    -> ^( extract_keyword extractField expression )
 	;
 
 extractField
-	:	datetimeField
-	|	timeZoneField
+	: datetimeField
+	| timeZoneField
 	;
 
 datetimeField
-	:	nonSecondDatetimeField
-	|	second_keyword
+	: nonSecondDatetimeField
+	| second_keyword
 	;
 
 nonSecondDatetimeField
-	:	year_keyword
-	|	month_keyword
-	|	day_keyword
-	|	hour_keyword
-	|	minute_keyword
+	: year_keyword
+	| month_keyword
+	| day_keyword
+	| hour_keyword
+	| minute_keyword
 	;
 
 timeZoneField
-	:	timezone_hour_keyword
-	|	timezone_minute_keyword
+	: timezone_hour_keyword
+	| timezone_minute_keyword
 	;
 
 positionFunction
-	:	position_keyword^ LEFT_PAREN! expression in_keyword! expression RIGHT_PAREN!
+	: position_keyword LEFT_PAREN expression in_keyword expression RIGHT_PAREN
+	    -> ^( position_keyword expression+ )
 	;
 
 charLengthFunction
-	:	character_length_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	: character_length_keyword LEFT_PAREN expression RIGHT_PAREN
+	    -> ^( character_length_keyword expression )
 	;
 
 octetLengthFunction
-	:	octet_length_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	: octet_length_keyword LEFT_PAREN expression RIGHT_PAREN
+	    -> ^( octet_length_keyword expression )
 	;
 
 bitLengthFunction
-	:	bit_length_keyword^ LEFT_PAREN! expression RIGHT_PAREN!
+	: bit_length_keyword LEFT_PAREN expression RIGHT_PAREN
+	    -> ^( bit_length_keyword expression )
 	;
 
 
@@ -335,10 +349,9 @@ generalFunctionName :
 /**
  * Recognized function parameters.
  */
-functionArgument :
-    expression
-    | literal
-;
+functionArgument
+    : expression
+    ;
 
 literal
 	:	numeric_literal
@@ -361,30 +374,30 @@ numeric_literal
 collationSpecification!
     : collateKeyword collationName
         -> COLLATE[$collateKeyword.start,$collationName.text]
-;
+    ;
 
-collateKeyword :
-    {(validateSoftKeyword("collate"))}?=>  id=IDENTIFIER
-		->	COLLATE[$id]
-;
+collateKeyword
+    : {(validateSoftKeyword("collate"))}?=>  id=IDENTIFIER
+        -> COLLATE[$id]
+    ;
 
 /**
  * The collation name wrt {@link #collationSpecification}.  Namely, the character-set.
  */
-collationName :
-    IDENTIFIER
-;
+collationName
+    : IDENTIFIER
+    ;
 
 /**
  * Reconition rule for what ANSI SQL terms the <tt>ordering specification</tt>; <tt>ASCENDING</tt> or
  * <tt>DESCENDING</tt>.
  */
-orderingSpecification! :
-    ascending_keyword
+orderingSpecification!
+    : ascending_keyword
         -> ORDER_SPEC[$ascending_keyword.start,$ascending_keyword.text]
     | descending_keyword
         -> ORDER_SPEC[$descending_keyword.start,$descending_keyword.text]
-;
+    ;
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

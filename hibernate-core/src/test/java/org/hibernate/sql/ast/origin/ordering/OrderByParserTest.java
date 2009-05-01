@@ -242,7 +242,7 @@ public class OrderByParserTest extends TestCase {
 	protected CommonTree parse(String orderByFragment, TranslationContext context) {
 		try {
 			HQLLexer lexer = new HQLLexer( new ANTLRStringStream( orderByFragment ) );
-			OrderByFragmentParser parser = new OrderByFragmentParser( new CommonTokenStream( lexer ), context );
+			ContextualOrderByParser parser = new ContextualOrderByParser( new CommonTokenStream( lexer ), context );
 			CommonTree rtn = parser.orderByFragment().tree;
 			// temp
 			System.out.println(

@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.hibernate.sql.ast.common.HibernateTree;
+import org.hibernate.sql.ast.origin.hql.parse.HQLLexer;
 import org.hibernate.sql.Template;
 
 /**
@@ -37,14 +38,14 @@ import org.hibernate.sql.Template;
  *
  * @author Steve Ebersole
  */
-public class OrderByFragmentParser extends OrderByParser {
-	private static final Logger log = LoggerFactory.getLogger( OrderByFragmentParser.class );
+public class ContextualOrderByParser extends OrderByParser {
+	private static final Logger log = LoggerFactory.getLogger( ContextualOrderByParser.class );
 	private final TranslationContext context;
 
 	private final String openQuoteChar;
 	private final String closeQuoteChar;
 
-	public OrderByFragmentParser(TokenStream lexer, TranslationContext context) {
+	public ContextualOrderByParser(TokenStream lexer, TranslationContext context) {
 		super( lexer );
 		this.context = context;
 
@@ -104,6 +105,13 @@ public class OrderByFragmentParser extends OrderByParser {
 	}
 
 	private String extractPropertyName(CommonTree propertyTree) {
-		return propertyTree.getText();
+		if ( HQLLexer.DOT == propertyTree.getType() ) {
+			return extractPropertyName( ( CommonTree ) propertyTree.getChild( 0 ) ) + "." +
+					extractPropertyName( ( CommonTree ) propertyTree.getChild( 1 ) );
+		}
+		else {
+			// assume IDENTIFIER... assertion?
+			return propertyTree.getText();
+		}
 	}
 }

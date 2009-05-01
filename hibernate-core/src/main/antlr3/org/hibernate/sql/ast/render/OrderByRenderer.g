@@ -38,143 +38,237 @@ options{
  * entirety.
  */
 package org.hibernate.sql.ast.render;
+
+import org.antlr.stringtemplate.StringTemplate;
+}
+
+@members {
+    protected StringTemplate quotedIdentifier(CommonToken recognizedIdentifierToken) {
+        return new StringTemplate( getTemplateLib(), recognizedIdentifierToken.getText() );
+    }
+
+    protected StringTemplate basicFunctionTemplate(String functionName, List arguments) {
+        return new StringTemplate(
+                getTemplateLib(),
+                "<name>(<arguments; separator=\", \">)",
+                new STAttrMap().put( "name", functionName ).put( "arguments", arguments )
+        );
+    }
+
+    protected StringTemplate castFunctionTemplate(StringTemplate expression, String  datatype) {
+        return new StringTemplate(
+                getTemplateLib(),
+                "cast(<expression> as <datatype>)",
+                new STAttrMap().put( "expression", expression )
+                        .put( "datatype", datatype )
+        );
+    }
+
+    protected StringTemplate trimFunctionTemplate(StringTemplate trimSpec, StringTemplate trimCharacter, StringTemplate trimSource) {
+        return new StringTemplate(
+                getTemplateLib(),
+                "trim(<trimSpec> <trimCharacter> from <trimSource>)",
+                new STAttrMap().put( "trimSpec", trimSpec )
+                        .put( "trimCharacter", trimCharacter )
+                        .put( "trimSource", trimSource )
+        );
+    }
+
+    protected StringTemplate extractFunctionTemplate(StringTemplate extractField, StringTemplate expression) {
+        return new StringTemplate(
+                getTemplateLib(),
+                "extract(<extractField> from <expression>)",
+                new STAttrMap().put( "extractField", extractField )
+                        .put( "expression", expression )
+        );
+    }
+
+    protected StringTemplate positionFunctionTemplate(StringTemplate searchString, StringTemplate sourceString) {
+        return new StringTemplate(
+                getTemplateLib(),
+                "position(<searchString> in <sourceString>)",
+                new STAttrMap().put( "searchString", searchString )
+                        .put( "sourceString", sourceString )
+        );
+    }
 }
 
 // todo : merge with 'full sql rendering' grammar
 //    this is currently just a temporary subset grammar limited to the needs of mapping-defined order-by fragments
 
-orderByClause
+orderByFragment
     : ^( ORDER_BY sortSpecs+=sortSpecification+ )
-        ->  orderByClause( sortSpecifications={$sortSpecs} )
+        ->  orderByFragment( sortSpecifications={$sortSpecs} )
     ;
 
 sortSpecification
-    : ^( SORT_SPEC sortKey COLLATE? ORDER_SPEC? )
+    : ^( SORT_SPEC sortKey collationSpecification? ORDER_SPEC? )
         ->  sortSpecification(
                     sortKey={$sortKey.st},
-                    collationSpecification={$COLLATE.text},
+                    collationSpecification={$collationSpecification.st},
                     orderingSpecification={$ORDER_SPEC.text}
             )
     ;
 
+collationSpecification
+    : COLLATE -> {%{"collate " + $COLLATE.text}}
+    ;
+
 sortKey
-    : expression
+    : expression -> {$expression.st}
     ;
 
 expression
-    : column
-    | function
+    : valueExpression -> {$valueExpression.st}
+    ;
+
+valueExpression
+    : column -> {$column.st}
+    | function -> {$function.st}
+    | literal -> {$literal.st}
+    | rowValueConstructor -> {$rowValueConstructor.st}
+    ;
+
+characterValueExpression
+    : valueExpression -> {$valueExpression.st}
+    ;
+
+numericValueExpression
+    : valueExpression -> {$valueExpression.st}
     ;
 
 column
     : ^( COLUMN ALIAS_REF identifier )
-        -> column( qualifier={$ALIAS_REF.text}, name={$identifier.text} )
+        -> column( qualifier={$ALIAS_REF.text}, name={$identifier.st} )
     ;
 
 identifier
-    : IDENTIFIER
-    | QUOTED_IDENTIFIER
+    : IDENTIFIER -> {%{$IDENTIFIER.text}}
+    | QUOTED_IDENTIFIER -> { quotedIdentifier( (CommonToken) $QUOTED_IDENTIFIER.getToken() ) }
+    ;
+
+rowValueConstructor
+    : ^( VECTOR_EXPR expressions+=expression+ )
+        -> template( expressions={$expressions} ) "(<expressions; separator=\", \">)"
     ;
 
 function
-    : functionFunction
-//	| castFunction
-//	| concatFunction
-//	| substringFunction
-//	| trimFunction
-//	| upperFunction
-//	| lowerFunction
-//	| lengthFunction
-//	| locateFunction
-	| absFunction
-	| sqrtFunction
-	| modFunction
-	| currentDateFunction
-	| currentTimeFunction
-	| currentTimestampFunction
-	| extractFunction
-	| positionFunction
-	| charLengthFunction
-	| octetLengthFunction
-	| bitLengthFunction
+    : functionFunction -> {$functionFunction.st}
+	| castFunction -> {$castFunction.st}
+	| concatFunction -> {$concatFunction.st}
+	| substringFunction -> {$substringFunction.st}
+	| trimFunction -> {$trimFunction.st}
+	| upperFunction -> {$upperFunction.st}
+	| lowerFunction -> {$lowerFunction.st}
+	| lengthFunction -> {$lengthFunction.st}
+	| locateFunction -> {$locateFunction.st}
+	| absFunction -> {$absFunction.st}
+	| sqrtFunction -> {$sqrtFunction.st}
+	| modFunction -> {$modFunction.st}
+	| currentDateFunction -> {$currentDateFunction.st}
+	| currentTimeFunction -> {$currentTimeFunction.st}
+	| currentTimestampFunction -> {$currentTimestampFunction.st}
+	| extractFunction -> {$extractFunction.st}
+	| positionFunction -> {$positionFunction.st}
+	| charLengthFunction -> {$charLengthFunction.st}
+	| octetLengthFunction -> {$octetLengthFunction.st}
+	| bitLengthFunction -> {$bitLengthFunction.st}
     ;
 
 functionFunction
     : ^( FUNCTION args+=functionArgument* )
-        -> basicFunction( name={$FUNCTION.text}, args={$args} )
+        -> { basicFunctionTemplate( $FUNCTION.text, $args ) }
     ;
 
 functionArgument
-    : expression
-    | literal
+    : expression -> {$expression.st}
 ;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// rewritten in parser as ^( FUNCTION ... ) structures
-//castFunction
-//	: ^( CAST valueExpression IDENTIFIER )
-//	;
-//
-//concatFunction
-//	: ^( CONCAT valueExpression+ )
-//	;
-//
-//substringFunction
-//	:	^(SUBSTRING characterValueExpression numericValueExpression numericValueExpression?)
-//	;
-//
-//trimFunction
-//	:	^(TRIM trimOperands)
-//	;
-//
-//trimOperands
-//	:	^((LEADING|TRAILING|BOTH) characterValueExpression characterValueExpression)
-//	;
-//
-//upperFunction
-//	:	^(UPPER characterValueExpression)
-//	;
-//
-//lowerFunction
-//	:	^(LOWER characterValueExpression)
-//	;
-//
-//lengthFunction
-//	:	^(LENGTH characterValueExpression)
-//	;
-//
-//locateFunction
-//	:	^(LOCATE characterValueExpression characterValueExpression numericValueExpression?)
-//	;
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+castFunction
+    : ^( CAST valueExpression IDENTIFIER )
+        -> { castFunctionTemplate( $valueExpression.st, $IDENTIFIER.text ) }
+    ;
+
+concatFunction
+	: ^( CONCAT args+=valueExpression+ )
+        -> { basicFunctionTemplate( $CONCAT.text, $args ) }
+	;
+
+substringFunction
+    : ^( SUBSTRING args+=characterValueExpression args+=numericValueExpression args+=numericValueExpression? )
+        -> { basicFunctionTemplate( $SUBSTRING.text, $args ) }
+    ;
+
+trimFunction
+    : ^( TRIM ^( trimSpec trimChar trimSource ) )
+        -> { trimFunctionTemplate( $trimSpec.st, $trimChar.st, $trimSource.st ) }
+    ;
+
+trimSpec
+    : LEADING   -> {%{"leading"}}
+    | TRAILING  -> {%{"trailing"}}
+    | BOTH      -> {%{"both"}}
+    ;
+
+trimChar
+    : characterValueExpression -> { $characterValueExpression.st }
+    ;
+
+trimSource
+    : characterValueExpression -> { $characterValueExpression.st }
+    ;
+
+upperFunction
+    : ^( UPPER args+=characterValueExpression )
+        -> { basicFunctionTemplate( $UPPER.text, $args ) }
+    ;
+
+lowerFunction
+    : ^( LOWER args+=characterValueExpression )
+        -> { basicFunctionTemplate( $LOWER.text, $args ) }
+    ;
+
+lengthFunction
+    : ^( LENGTH args+=characterValueExpression )
+        -> { basicFunctionTemplate( $LENGTH.text, $args ) }
+    ;
+
+locateFunction
+    : ^( LOCATE args+=characterValueExpression args+=characterValueExpression args+=numericValueExpression? )
+        -> { basicFunctionTemplate( $LOCATE.text, $args ) }
+    ;
 
 absFunction
-	:	^( ABS expression )
-	;
+    : ^( ABS args+=expression )
+        -> { basicFunctionTemplate( $ABS.text, $args ) }
+    ;
 
 sqrtFunction
-	:	^(SQRT expression)
-	;
+    : ^( SQRT args+=expression )
+        -> { basicFunctionTemplate( $SQRT.text, $args ) }
+    ;
 
 modFunction
-	:	^(MOD expression expression)
-	;
+    : ^( MOD args+=expression args+=expression )
+        -> { basicFunctionTemplate( $MOD.text, $args ) }
+    ;
 
 currentDateFunction
-	:	CURRENT_DATE
-	;
+    : CURRENT_DATE -> { basicFunctionTemplate( $CURRENT_DATE.text, null ) }
+    ;
 
 currentTimeFunction
-	:	CURRENT_TIME
-	;
+    : CURRENT_TIME -> { basicFunctionTemplate( $CURRENT_TIME.text, null ) }
+    ;
 
 currentTimestampFunction
-	:	CURRENT_TIMESTAMP
-	;
+    : CURRENT_TIMESTAMP -> { basicFunctionTemplate( $CURRENT_TIMESTAMP.text, null ) }
+    ;
 
 extractFunction
-	:	^(EXTRACT extractField expression)
-	;
+    : ^( EXTRACT extractField expression )
+        -> { extractFunctionTemplate( $extractField.st, $expression.st ) }
+    ;
 
 extractField
 	:	datetimeField
@@ -182,46 +276,50 @@ extractField
 	;
 
 datetimeField
-	:	YEAR
-	|	MONTH
-	|	DAY
-	|	HOUR
-	|	MINUTE
-	|	SECOND
+	:	YEAR    -> {%{"year"}}
+	|	MONTH   -> {%{"month"}}
+	|	DAY     -> {%{"day"}}
+	|	HOUR    -> {%{"hour"}}
+	|	MINUTE  -> {%{"minute"}}
+	|	SECOND  -> {%{"second"}}
 	;
 
 timeZoneField
-	:	TIMEZONE_HOUR
-	|	TIMEZONE_MINUTE
+	:	TIMEZONE_HOUR   -> {%{"timezone_hour"}}
+	|	TIMEZONE_MINUTE -> {%{"timezone_minute"}}
 	;
 
 positionFunction
-	:	^(POSITION expression expression)
-	;
+    : ^( POSITION s1=expression s2=expression )
+        -> { positionFunctionTemplate( $s1.st, $s2.st ) }
+    ;
 
 charLengthFunction
-	:	^(CHARACTER_LENGTH expression)
-	;
+    : ^( CHARACTER_LENGTH args+=expression )
+         -> { basicFunctionTemplate( $CHARACTER_LENGTH.text, $args ) }
+    ;
 
 octetLengthFunction
-	:	^(OCTET_LENGTH expression)
-	;
+    : ^( OCTET_LENGTH args+=expression )
+         -> { basicFunctionTemplate( $OCTET_LENGTH.text, $args ) }
+    ;
 
 bitLengthFunction
-	:	^(BIT_LENGTH expression)
-	;
+    : ^( BIT_LENGTH args+=expression )
+         -> { basicFunctionTemplate( $BIT_LENGTH.text, $args ) }
+    ;
 
 literal
-	:	numeric_literal
-	|	HEX_LITERAL
-	|	OCTAL_LITERAL
-	|	CHARACTER_LITERAL
-	|	STRING_LITERAL
+	:	numeric_literal -> {$numeric_literal.st}
+	|	HEX_LITERAL -> {%{$HEX_LITERAL.text}}
+	|	OCTAL_LITERAL -> {%{$OCTAL_LITERAL.text}}
+	|	CHARACTER_LITERAL -> {%{$CHARACTER_LITERAL.text}}
+	|	STRING_LITERAL -> {%{$STRING_LITERAL.text}}
 	;
 
 numeric_literal
-	:	INTEGER_LITERAL
-	|	DECIMAL_LITERAL
-	|	FLOATING_POINT_LITERAL
+	:	INTEGER_LITERAL -> {%{$INTEGER_LITERAL.text}}
+	|	DECIMAL_LITERAL -> {%{$DECIMAL_LITERAL.text}}
+	|	FLOATING_POINT_LITERAL -> {%{$FLOATING_POINT_LITERAL.text}}
 	;
 
