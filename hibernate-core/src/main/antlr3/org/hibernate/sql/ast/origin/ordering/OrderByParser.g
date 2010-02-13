@@ -43,6 +43,12 @@ import org.hibernate.sql.Template;
 }
 
 @parser::members {
+	private Stack flattenTuples = new Stack();
+
+    protected void prepareFlattenTuplesStack() {
+        flattenTuples.push( Boolean.FALSE );
+    }
+
     /**
      * A check to see if the text represents a known function name (in addition to the
      * set of known {@link #standardFunction "standard"} functions.  This is only needed in the
@@ -99,6 +105,10 @@ import org.hibernate.sql.Template;
 		Token token = input.LT(offset);
 		return token == null ? null : token.getText();
 	}
+
+    public Boolean shouldFlattenTuplesInOrderBy() {
+        return Boolean.TRUE;
+    }
 }
 
 
@@ -109,7 +119,16 @@ import org.hibernate.sql.Template;
  * Main recognition rule for this grammar
  */
 orderByFragment
-    : sortSpecification ( COMMA sortSpecification )*
+@init {
+    if ( state.backtracking == 0 ) {
+        flattenTuples.push( shouldFlattenTuplesInOrderBy() );
+    }
+}
+@after {
+    if ( state.backtracking == 0 ) {
+        flattenTuples.pop();
+    }
+} : sortSpecification ( COMMA sortSpecification )*
         -> ^( ORDER_BY sortSpecification+ )
     ;
 
@@ -117,10 +136,13 @@ orderByFragment
 /**
  * Reconition rule for what ANSI SQL terms the <tt>sort specification</tt>.  These are the atomic elements of the
  * <tt>ORDER BY</tt> list pieces.
+ * </p>
+ * IMPL NOTE : The '+' on the outside of the ^( SORT_SPEC ... ) rewrite forces a duplication of the root, one
+ *    for each child return from
  */
 sortSpecification
     : sortKey collationSpecification? orderingSpecification?
-        -> ^( SORT_SPEC sortKey collationSpecification? orderingSpecification? )
+        -> ^( SORT_SPEC sortKey collationSpecification? orderingSpecification? )+
     ;
 
 
@@ -136,7 +158,17 @@ sortKey
  * Reconition rule what this grammar recognizes as valid <tt>sort key</tt>.
  */
 expression
-    : QUOTED_IDENTIFIER -> ^( COLUMN ALIAS_REF[Template.TEMPLATE] QUOTED_IDENTIFIER[$QUOTED_IDENTIFIER] )
+@init {
+    if ( state.backtracking == 0 ) {
+        enableParameterUsage.push(Boolean.TRUE);
+    }
+}
+@after {
+    if ( state.backtracking == 0 ) {
+        enableParameterUsage.pop();
+    }
+}
+   : QUOTED_IDENTIFIER -> ^( COLUMN ALIAS_REF[Template.TEMPLATE] QUOTED_IDENTIFIER[$QUOTED_IDENTIFIER] )
     // we treat the so-called standard functions differently because they are handled differently by the HQL lexer which we also use here...
     | standardFunction
     | literal
