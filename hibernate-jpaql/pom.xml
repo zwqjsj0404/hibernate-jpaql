@@ -34,7 +34,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.hibernate</groupId>
-    <artifactId>hibernate-core</artifactId>
+    <artifactId>hibernate-jpaql</artifactId>
     <version>3.6.0.antlr3</version>
     <packaging>jar</packaging>
 
