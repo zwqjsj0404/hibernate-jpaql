@@ -38,7 +38,7 @@ options{
  * with or without modification, you must preserve this copyright notice in its
  * entirety.
  */
-package org.hibernate.sql.ast.phase.hql.parse;
+package org.hibernate.sql.ast.origin.hql.parse;
 }
 
 filterStatement[String collectionRole]

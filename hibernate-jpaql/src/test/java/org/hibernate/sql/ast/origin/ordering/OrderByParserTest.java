@@ -37,7 +37,7 @@ import org.hibernate.dialect.function.SQLFunctionRegistry;
 import org.hibernate.dialect.function.SQLFunction;
 import org.hibernate.dialect.function.SQLFunctionTemplate;
 import org.hibernate.engine.SessionFactoryImplementor;
-import org.hibernate.sql.ast.util.ASTUtil;
+import org.hibernate.hql.ast.util.ASTUtil;
 import org.hibernate.sql.ast.util.TreePrinter;
 import org.hibernate.sql.ast.origin.hql.parse.HQLLexer;
 import org.hibernate.sql.Template;
