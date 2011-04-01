@@ -28,24 +28,22 @@
  */
 package org.hibernate.sql.ast.origin.hql.resolve.path.impl;
 
-import org.hibernate.QueryException;
-
 /**
  * Basic exception type definition for indicating that the type of a referenced property did match the type
  * expected given its position and semantic within the query.
  *
  * @author Steve Ebersole
  */
-public class AbstractUnexpectedPropertyTypeException extends QueryException {
+public class AbstractUnexpectedPropertyTypeException extends QueryParseException {
 	private final String path;
 	private final String persisterName;
 	private final String propertyName;
 
 	public AbstractUnexpectedPropertyTypeException(String path, String persisterName, String propertyName) {
-		super();
+		super("path: '" + path + "' property: '" + propertyName + "'");
 		this.path = path;
 		this.persisterName = persisterName;
-		this.propertyName = propertyName;
+		this.propertyName = propertyName; 
 	}
 
 	@Override
