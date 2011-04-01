@@ -44,6 +44,7 @@ import org.hibernate.sql.Template;
 
 @parser::members {
 	private Stack flattenTuples = new Stack();
+	private Stack enableParameterUsage = new Stack();
 
     protected void prepareFlattenTuplesStack() {
         flattenTuples.push( Boolean.FALSE );
